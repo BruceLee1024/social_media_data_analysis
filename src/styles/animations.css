@@ -1,0 +1,74 @@
+/* 自定义动画样式 */
+
+/* 延迟动画 */
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
+
+/* 渐变文字动画 */
+@keyframes gradient-shift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shift 3s ease infinite;
+}
+
+/* 悬浮动画 */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* 缩放脉冲动画 */
+@keyframes scale-pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.animate-scale-pulse {
+  animation: scale-pulse 2s ease-in-out infinite;
+}
+
+/* 毛玻璃效果增强 */
+.backdrop-blur-enhanced {
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+/* 渐变边框动画 */
+@keyframes border-gradient {
+  0%, 100% {
+    border-image: linear-gradient(45deg, #3b82f6, #8b5cf6, #06b6d4) 1;
+  }
+  50% {
+    border-image: linear-gradient(45deg, #06b6d4, #3b82f6, #8b5cf6) 1;
+  }
+}
+
+.animate-border-gradient {
+  border: 2px solid;
+  animation: border-gradient 3s ease infinite;
+}
