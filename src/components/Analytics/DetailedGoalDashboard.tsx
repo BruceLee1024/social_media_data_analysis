@@ -28,9 +28,9 @@ interface MonthlyGoal {
     total: number;
   };
   engagementGoals: {
-    totalViews: number; // 万次
+    totalViews: number; // 次
     viralCount: number;
-    totalInteractions: number; // 万次
+    totalInteractions: number; // 次
     completionRate: number; // %
   };
 }
@@ -90,7 +90,7 @@ const DetailedGoalDashboard: React.FC<DetailedGoalDashboardProps> = ({ metrics, 
       engagementGoals: {
         totalViews: 40,
         viralCount: 1,
-        totalInteractions: 1.25, // 修复：改为1.25万次（即12500次）
+        totalInteractions: 12500, // 修复：改为12500次
         completionRate: 12
       }
     },
@@ -113,7 +113,7 @@ const DetailedGoalDashboard: React.FC<DetailedGoalDashboardProps> = ({ metrics, 
       engagementGoals: {
         totalViews: 50,
         viralCount: 1,
-        totalInteractions: 1.75, // 修复：改为1.75万次（即17500次）
+        totalInteractions: 17500, // 修复：改为17500次
         completionRate: 12
       }
     },
@@ -136,7 +136,7 @@ const DetailedGoalDashboard: React.FC<DetailedGoalDashboardProps> = ({ metrics, 
       engagementGoals: {
         totalViews: 60,
         viralCount: 1,
-        totalInteractions: 2, // 修复：改为2万次（即20000次）
+        totalInteractions: 20000, // 修复：改为20000次
         completionRate: 12
       }
     }
@@ -158,9 +158,9 @@ const DetailedGoalDashboard: React.FC<DetailedGoalDashboardProps> = ({ metrics, 
       total: 20000
     },
     engagementGoals: {
-      totalViews: 150,
+      totalViews: 2000000,
       viralCount: 3,
-      totalInteractions: 5, // 修复：改为5万次（即50000次）
+      totalInteractions: 50000, // 修复：改为50000次
       completionRate: 12
     }
   };
@@ -184,9 +184,9 @@ const DetailedGoalDashboard: React.FC<DetailedGoalDashboardProps> = ({ metrics, 
       total: editingData.fans.douyin + editingData.fans.shipinhao + editingData.fans.xiaohongshu // 自动计算总计
     },
     engagement: {
-      totalViews: metrics?.totalViews ? metrics.totalViews / 10000 : 0, // 修复：使用实际总播放量（转换为万次）
+      totalViews: metrics?.totalViews || 0, // 修复：使用实际总播放量
       viralCount: metrics?.viralContentCount || 0, // 修复：使用实际的爆款视频数量
-      totalInteractions: (metrics?.totalLikes + metrics?.totalComments + metrics?.totalShares + (metrics?.totalBookmarks || 0)) / 10000 || 0, // 修复：使用实际总互动量（转换为万次）
+      totalInteractions: (metrics?.totalLikes + metrics?.totalComments + metrics?.totalShares + (metrics?.totalBookmarks || 0)) || 0, // 修复：使用实际总互动量
       completionRate: metrics?.avgCompletionRate || 0 // 修复：使用实际完播率
     }
   };
@@ -270,7 +270,7 @@ const DetailedGoalDashboard: React.FC<DetailedGoalDashboardProps> = ({ metrics, 
           <div className="flex justify-between text-sm">
             <span className="text-gray-600">进度</span>
             <span className={`font-semibold text-${color}-900`}>
-              {AnalyticsProcessor.formatNumber(current)} / {AnalyticsProcessor.formatNumber(target)} {unit}
+              {unit === '%' ? `${current.toFixed(1)}` : AnalyticsProcessor.formatNumber(current)} / {unit === '%' ? `${target}` : AnalyticsProcessor.formatNumber(target)} {unit}
             </span>
           </div>
           
@@ -503,16 +503,16 @@ const DetailedGoalDashboard: React.FC<DetailedGoalDashboardProps> = ({ metrics, 
           <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {selectedMonth === '年度' ? (
               <>
-                {renderProgressCard('总播放量', currentData.engagement.totalViews, yearlyGoals.engagementGoals.totalViews, '万次', Eye, 'purple')}
+                {renderProgressCard('总播放量', currentData.engagement.totalViews, yearlyGoals.engagementGoals.totalViews, '次', Eye, 'purple')}
                 {renderProgressCard('爆款视频', currentData.engagement.viralCount, yearlyGoals.engagementGoals.viralCount, '个', Award, 'yellow')}
-                {renderProgressCard('总互动量', currentData.engagement.totalInteractions, yearlyGoals.engagementGoals.totalInteractions, '万次', Heart, 'red')}
+                {renderProgressCard('总互动量', currentData.engagement.totalInteractions, yearlyGoals.engagementGoals.totalInteractions, '次', Heart, 'red')}
                 {renderProgressCard('完播率', currentData.engagement.completionRate, yearlyGoals.engagementGoals.completionRate, '%', BookmarkPlus, 'green')}
               </>
             ) : (
               <>
-                {renderProgressCard('总播放量', currentData.engagement.totalViews, currentGoal.engagementGoals.totalViews, '万次', Eye, 'purple')}
+                {renderProgressCard('总播放量', currentData.engagement.totalViews, currentGoal.engagementGoals.totalViews, '次', Eye, 'purple')}
                 {renderProgressCard('爆款视频', currentData.engagement.viralCount, currentGoal.engagementGoals.viralCount, '个', Award, 'yellow')}
-                {renderProgressCard('总互动量', currentData.engagement.totalInteractions, currentGoal.engagementGoals.totalInteractions, '万次', Heart, 'red')}
+                {renderProgressCard('总互动量', currentData.engagement.totalInteractions, currentGoal.engagementGoals.totalInteractions, '次', Heart, 'red')}
                 {renderProgressCard('完播率', currentData.engagement.completionRate, currentGoal.engagementGoals.completionRate, '%', BookmarkPlus, 'green')}
               </>
             )}

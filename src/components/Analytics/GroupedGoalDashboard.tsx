@@ -214,7 +214,7 @@ const GroupedGoalDashboard: React.FC<GroupedGoalDashboardProps> = ({ metrics, an
           <div className="flex justify-between items-center">
             <span className="text-sm text-gray-600">当前进度</span>
             <span className={`font-bold ${goal.textColor}`}>
-              {AnalyticsProcessor.formatNumber(goal.current)} / {AnalyticsProcessor.formatNumber(goal.target)} {goal.unit}
+              {goal.unit === '%' ? `${goal.current.toFixed(1)}` : AnalyticsProcessor.formatNumber(goal.current)} / {goal.unit === '%' ? `${goal.target}` : AnalyticsProcessor.formatNumber(goal.target)} {goal.unit}
             </span>
           </div>
 

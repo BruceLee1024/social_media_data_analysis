@@ -46,9 +46,6 @@ const OverviewCards: React.FC<OverviewCardsProps> = ({
     if (num === undefined || num === null) {
       return '0';
     }
-    if (num >= 10000) {
-      return (num / 10000).toFixed(1) + '万';
-    }
     return num.toLocaleString();
   };
 
@@ -56,11 +53,8 @@ const OverviewCards: React.FC<OverviewCardsProps> = ({
     if (isProcessed) {
       return rate.toFixed(2) + '%';
     } else {
-      if (platform === '抖音') {
-        return (rate * 100).toFixed(2) + '%';
-      } else {
-        return rate.toFixed(2) + '%';
-      }
+      // 所有平台都直接使用原始数据，不再对抖音进行特殊处理
+      return rate.toFixed(2) + '%';
     }
   };
 
@@ -226,6 +220,18 @@ const OverviewCards: React.FC<OverviewCardsProps> = ({
                 <p className="text-3xl font-bold text-blue-700">{formatNumber(metrics.totalViews)}</p>
               </div>
               <div className="p-3 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg">
+                <Eye className="w-6 h-6 text-white" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-indigo-600 text-sm font-medium mb-1">平均播放量（抖音+视频号）</p>
+                <p className="text-3xl font-bold text-indigo-700">{formatNumber(metrics.avgViewsDouyinShipinhao || 0)}</p>
+              </div>
+              <div className="p-3 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-lg">
                 <Eye className="w-6 h-6 text-white" />
               </div>
             </div>

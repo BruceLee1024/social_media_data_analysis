@@ -125,20 +125,47 @@ const DataPreview: React.FC<DataPreviewProps> = ({ data, onExport, summary }) =>
         acc[platform].hasBookmarks = true;
       }
       
-      // 使用已处理过的完播率数据
-      acc[platform].avgCompletionRate += row.完播率;
+      // 使用已处理过的完播率数据，排除小红书
+      if (platform !== '小红书' && row.完播率 > 0) {
+        let processedRate = row.完播率;
+        const rateStr = String(processedRate);
+        
+        if (platform === '抖音') {
+          // 抖音：直接使用原始数据
+          const parsed = typeof processedRate === 'number' ? processedRate : parseFloat(rateStr);
+          processedRate = isNaN(parsed) ? 0 : parsed;
+        } else if (platform === '视频号') {
+          // 视频号：统一处理，无论是否包含%符号
+          if (rateStr.includes('%')) {
+            const parsed = parseFloat(rateStr.replace('%', ''));
+            processedRate = isNaN(parsed) ? 0 : parsed;
+          } else {
+            const parsed = parseFloat(rateStr);
+            processedRate = isNaN(parsed) ? 0 : parsed;
+          }
+        }
+        
+        acc[platform].avgCompletionRate += processedRate;
+      }
       
       return acc;
     }, {} as Record<string, PlatformStat>);
 
     // 计算平均值
-    Object.values(statsByPlatform).forEach((stats: PlatformStat) => {
+    Object.entries(statsByPlatform).forEach(([platform, stats]) => {
       stats.avgViews = stats.totalViews / stats.count;
       stats.avgLikes = stats.totalLikes / stats.count;
       stats.avgComments = stats.totalComments / stats.count;
       stats.avgShares = stats.hasShares ? stats.totalShares / stats.count : 0;
       stats.avgBookmarks = stats.hasBookmarks ? stats.totalBookmarks / stats.count : 0;
-      stats.avgCompletionRate = stats.avgCompletionRate / stats.count;
+      
+      // 计算完播率平均值，排除小红书
+      if (platform !== '小红书') {
+        const validCompletionRateCount = data.filter(row => row.来源平台 === platform && row.完播率 > 0).length;
+        stats.avgCompletionRate = validCompletionRateCount > 0 ? stats.avgCompletionRate / validCompletionRateCount : 0;
+      } else {
+        stats.avgCompletionRate = 0;
+      }
       
       // 计算平均互动数
       const interactionComponents = [
@@ -243,9 +270,6 @@ const DataPreview: React.FC<DataPreviewProps> = ({ data, onExport, summary }) =>
     if (num === undefined || num === null) {
       return '0';
     }
-    if (num >= 10000) {
-      return (num / 10000).toFixed(1) + '万';
-    }
     return num.toLocaleString();
   };
 
@@ -253,11 +277,8 @@ const DataPreview: React.FC<DataPreviewProps> = ({ data, onExport, summary }) =>
     if (isProcessed) {
       return rate.toFixed(2) + '%';
     } else {
-      if (platform === '抖音') {
-        return (rate * 100).toFixed(2) + '%';
-      } else {
-        return rate.toFixed(2) + '%';
-      }
+      // 所有平台都直接使用原始数据，不再对抖音进行特殊处理
+      return rate.toFixed(2) + '%';
     }
   };
 

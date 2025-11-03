@@ -313,9 +313,9 @@ const ContentAnalysis: React.FC<ContentAnalysisProps> = ({ contentTypes, topCont
                         <TrendingUp className="w-4 h-4 text-green-600" />
                       </div>
                       <div>
-                        <p className="text-xs text-gray-600">互动率</p>
+                        <p className="text-xs text-gray-600">互动量</p>
                         <p className="text-sm font-semibold text-gray-900">
-                          {AnalyticsProcessor.formatPercentage(content.engagementRate)}
+                          {AnalyticsProcessor.formatNumber(content.engagementTotal)}
                         </p>
                       </div>
                     </div>

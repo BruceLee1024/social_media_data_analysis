@@ -90,22 +90,56 @@ const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ data, rawData }) => {
     '小红书': chartThemeColors.pink.main,
   };
 
-  // 模拟视频完播率数据
+  // 处理视频完播率数据（统一成百分比数值，例如 12.13 表示 12.13%）
   const videoCompletionData = useMemo((): VideoCompletionData[] => {
     if (!rawData || rawData.length === 0) {
       return [];
     }
 
-    return rawData.map((item, index) => ({
-      id: `video-${index}`,
-      title: item.标题描述 || `视频 ${index + 1}`,
-      platform: item.来源平台 || '抖音',
-      completionRate: item.完播率 || 0, // 使用真实的完播率数据
-      views: item.播放量 || 0,
-      publishDate: item.发布时间 || new Date().toISOString(),
-      engagement: (item.点赞量 || 0) + (item.评论量 || 0) + (item.分享量 || 0),
-      duration: `${Math.floor(Math.random() * 5) + 1}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}`,
-    }));
+    return rawData.map((item, index) => {
+      const platform = item.来源平台 || '抖音';
+      let rate: any = item.完播率 || 0;
+      const rateStr = String(rate);
+
+      let completionRate = 0; // 统一为百分比数值
+
+      if (platform === '抖音') {
+        const parsed = typeof rate === 'number' ? rate : parseFloat(rateStr);
+        if (!isNaN(parsed)) {
+          // 如果数据是小数（<=1），则认为是小数形式，转换为百分比
+          completionRate = parsed <= 1 ? parsed * 100 : parsed;
+        }
+      } else if (platform === '视频号') {
+        if (rateStr.includes('%')) {
+          const parsed = parseFloat(rateStr.replace('%', ''));
+          completionRate = isNaN(parsed) ? 0 : parsed;
+        } else {
+          const parsed = parseFloat(rateStr);
+          // 视频号如果出现小数形式，同样转换为百分比
+          completionRate = isNaN(parsed) ? 0 : (parsed <= 1 ? parsed * 100 : parsed);
+        }
+      } else {
+        // 其他平台：尽量容错处理
+        if (rateStr.includes('%')) {
+          const parsed = parseFloat(rateStr.replace('%', ''));
+          completionRate = isNaN(parsed) ? 0 : parsed;
+        } else {
+          const parsed = parseFloat(rateStr);
+          completionRate = isNaN(parsed) ? 0 : (parsed <= 1 ? parsed * 100 : parsed);
+        }
+      }
+
+      return {
+        id: `video-${index}`,
+        title: item.标题描述 || `视频 ${index + 1}`,
+        platform,
+        completionRate: Number(completionRate.toFixed(2)),
+        views: item.播放量 || 0,
+        publishDate: item.发布时间 || new Date().toISOString(),
+        engagement: (item.点赞量 || 0) + (item.评论量 || 0) + (item.分享量 || 0),
+        duration: `${Math.floor(Math.random() * 5) + 1}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}`,
+      };
+    });
   }, [rawData]);
 
   // 过滤和排序数据
@@ -742,14 +776,14 @@ const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ data, rawData }) => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
-                            <div className="text-sm font-semibold text-gray-900">{(video.completionRate * 100).toFixed(1)}%</div>
+                            <div className="text-sm font-semibold text-gray-900">{video.completionRate.toFixed(1)}%</div>
                             <div 
                               className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden"
                             >
                               <div 
                                 className="h-full rounded-full transition-all duration-300"
                                 style={{ 
-                                  width: `${video.completionRate * 100}%`,
+                                  width: `${video.completionRate}%`,
                                   backgroundColor: getPlatformColor(video.platform)
                                 }}
                               />

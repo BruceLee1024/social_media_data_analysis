@@ -115,6 +115,7 @@ export interface PerformanceMetrics {
   totalBookmarks?: number;
   avgEngagementRate: number;
   avgCompletionRate?: number;
+  avgViewsDouyinShipinhao?: number;
   bestPerformingPlatform: string;
   contentGrowthRate: number;
   totalContent: number;
@@ -129,6 +130,7 @@ export interface TopContentItem {
   likes: number;
   comments: number;
   engagementRate: number;
+  engagementTotal: number;
 }
 
 // 添加总统计数据接口

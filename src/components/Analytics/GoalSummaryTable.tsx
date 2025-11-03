@@ -152,7 +152,7 @@ const GoalSummaryTable: React.FC<GoalSummaryTableProps> = ({ metrics, goalData }
           name: '总播放量',
           current: goalData?.engagement?.totalViews || 0,
           target: goalData?.engagementGoals?.totalViews || 0,
-          unit: '万次',
+          unit: '次',
           percentage: goalData?.engagementGoals?.totalViews ? 
             Math.round((goalData.engagement.totalViews / goalData.engagementGoals.totalViews) * 100) : 0,
           status: getStatus(goalData?.engagementGoals?.totalViews ? 
@@ -172,7 +172,7 @@ const GoalSummaryTable: React.FC<GoalSummaryTableProps> = ({ metrics, goalData }
           name: '总互动量',
           current: goalData?.engagement?.totalInteractions || 0,
           target: goalData?.engagementGoals?.totalInteractions || 0,
-          unit: '万次',
+          unit: '次',
           percentage: goalData?.engagementGoals?.totalInteractions ? 
             Math.round((goalData.engagement.totalInteractions / goalData.engagementGoals.totalInteractions) * 100) : 0,
           status: getStatus(goalData?.engagementGoals?.totalInteractions ? 

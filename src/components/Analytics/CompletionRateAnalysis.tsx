@@ -39,13 +39,18 @@ const CompletionRateAnalysis: React.FC<CompletionRateAnalysisProps> = ({ data })
         const rateStr = String(completionRate);
         
         if (item.来源平台 === '抖音') {
-          // 抖音：小数格式转换为百分比
+          // 抖音：直接使用原始数据，不再乘以100
           const parsed = typeof completionRate === 'number' ? completionRate : parseFloat(rateStr);
-          completionRate = isNaN(parsed) ? 0 : parsed * 100;
-        } else if (item.来源平台 === '视频号' && rateStr.includes('%')) {
-          // 视频号：百分比字符串格式
-          const parsed = parseFloat(rateStr.replace('%', ''));
           completionRate = isNaN(parsed) ? 0 : parsed;
+        } else if (item.来源平台 === '视频号') {
+          // 视频号：统一处理，无论是否包含%符号
+          if (rateStr.includes('%')) {
+            const parsed = parseFloat(rateStr.replace('%', ''));
+            completionRate = isNaN(parsed) ? 0 : parsed;
+          } else {
+            const parsed = parseFloat(rateStr);
+            completionRate = isNaN(parsed) ? 0 : parsed;
+          }
         }
 
         return {
