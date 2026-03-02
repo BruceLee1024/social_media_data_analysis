@@ -11,7 +11,8 @@ export class DataProcessor {
     if (headerSet.has('视频描述') && headerSet.has('推荐')) {
       return '视频号';
     }
-    if (headerSet.has('笔记标题') && headerSet.has('曝光')) {
+    // 笔记标题 是小红书独有字段，单独检测即可
+    if (headerSet.has('笔记标题')) {
       return '小红书';
     }
     

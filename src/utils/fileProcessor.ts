@@ -2,6 +2,13 @@ import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
 
 export class FileProcessor {
+  // 已知的表格列名特征集合，用于检测「第一行是标题说明行，第二行才是真正列名」
+  private static readonly KNOWN_COLUMN_NAMES = new Set([
+    '笔记标题', '作品名称', '视频描述', '首次发布时间', '发布时间',
+    '播放量', '曝光', '曝光量', '观看量', '推荐', '点赞', '评论',
+    '收藏', '分享', '涨粉', '体裁', '粉丝增量', '完播率',
+  ]);
+
   static async readExcelFile(file: File): Promise<any[]> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -12,24 +19,32 @@ export class FileProcessor {
           const firstSheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[firstSheetName];
 
-          // 检测是否存在标题行（如小红书导出文件第一行为说明文字）
-          // 判断条件：第一行实际有内容的单元格数 ≤ 2，且表格总列数 ≥ 5
           const sheetRange = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
-          let startRow = 0;
+          let needSkip = false;
+
           if (sheetRange.e.r > 0 && sheetRange.e.c >= 4) {
-            let nonEmptyInFirstRow = 0;
+            // 方法1：worksheet 层面——第一行非空单元格数 ≤ 2（合并单元格标题行）
+            let nonEmpty = 0;
             for (let c = 0; c <= sheetRange.e.c; c++) {
               const addr = XLSX.utils.encode_cell({ r: 0, c });
-              if (worksheet[addr] && worksheet[addr].v !== undefined && worksheet[addr].v !== '') {
-                nonEmptyInFirstRow++;
-              }
+              if (worksheet[addr]?.v !== undefined && worksheet[addr].v !== '') nonEmpty++;
             }
-            if (nonEmptyInFirstRow <= 2) {
-              startRow = 1; // 跳过标题行，以第二行为列名
+            if (nonEmpty <= 2) needSkip = true;
+
+            // 方法2：解析数据层面——第一行数据的「值」包含已知列名
+            // （说明真正的列名在第二行，第一行是说明文字）
+            if (!needSkip) {
+              const firstParse = XLSX.utils.sheet_to_json(worksheet) as Record<string, any>[];
+              if (firstParse.length > 0) {
+                const firstRowVals = Object.values(firstParse[0]).map(v => String(v));
+                if (firstRowVals.some(v => FileProcessor.KNOWN_COLUMN_NAMES.has(v))) {
+                  needSkip = true;
+                }
+              }
             }
           }
 
-          const jsonData = XLSX.utils.sheet_to_json(worksheet, startRow > 0 ? { range: startRow } : {});
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, needSkip ? { range: 1 } : {});
           resolve(jsonData);
         } catch (error) {
           reject(error);
