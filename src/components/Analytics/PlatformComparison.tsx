@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
 import { PlatformMetrics } from '../../types';
 import { AnalyticsProcessor } from '../../utils/analyticsProcessor';
 
@@ -79,8 +79,65 @@ const PlatformComparison: React.FC<PlatformComparisonProps> = ({ data }) => {
     totalEngagement: item.totalLikes + item.totalComments + item.totalShares + (item.totalBookmarks || 0)
   }));
 
+  // 雷达图数据：将各平台 5 个维度正则化到 [0, 100]
+  const radarDimensions = [
+    { key: 'totalViews',     label: '播放量' },
+    { key: 'totalLikes',     label: '点赞量' },
+    { key: 'totalComments',  label: '评论量' },
+    { key: 'totalShares',    label: '分享量' },
+    { key: 'totalContent',   label: '内容数' },
+  ] as const;
+
+  const radarData = radarDimensions.map(({ key, label }) => {
+    const maxVal = Math.max(...data.map(d => (d as any)[key] || 0)) || 1;
+    const entry: Record<string, any> = { subject: label };
+    data.forEach(d => {
+      entry[d.platform] = Math.round(((d as any)[key] / maxVal) * 100);
+    });
+    return entry;
+  });
+
+  const radarColors = Object.entries(gradientColors).map(([, [start]]) => start);
+
   return (
     <div className="space-y-8">
+      {/* 雷达图：平台全维度对比 */}
+      <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl border border-gray-200 p-8 shadow-lg hover:shadow-xl transition-all duration-300">
+        <div className="flex items-center mb-6">
+          <div className="w-1 h-6 bg-gradient-to-b from-violet-500 to-purple-600 rounded-full mr-3"></div>
+          <h3 className="text-xl font-bold text-gray-900">平台全维度对比（归一化）</h3>
+          <span className="ml-3 text-xs text-gray-400">各维度已按最大值正则化到 100</span>
+        </div>
+        <div className="h-80">
+          <ResponsiveContainer width="100%" height="100%">
+            <RadarChart data={radarData} margin={{ top: 10, right: 40, bottom: 10, left: 40 }}>
+              <PolarGrid stroke="#e5e7eb" />
+              <PolarAngleAxis
+                dataKey="subject"
+                tick={{ fontSize: 13, fill: '#374151', fontWeight: 600 }}
+              />
+              <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fontSize: 10, fill: '#9ca3af' }} />
+              {data.map((platform, index) => (
+                <Radar
+                  key={platform.platform}
+                  name={platform.platform}
+                  dataKey={platform.platform}
+                  stroke={radarColors[index] || '#3b82f6'}
+                  fill={radarColors[index] || '#3b82f6'}
+                  fillOpacity={0.18}
+                  strokeWidth={2}
+                />
+              ))}
+              <Legend wrapperStyle={{ paddingTop: 16, fontSize: 14, fontWeight: 500 }} />
+              <Tooltip
+                formatter={(value: number, name: string) => [`${value}`, `${name}`]}
+                contentStyle={{ backgroundColor: 'rgba(255,255,255,0.97)', borderRadius: 10, border: '1px solid #e5e7eb', fontSize: 13 }}
+              />
+            </RadarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
       {/* 第一行：播放量占比和播放量对比 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* 平台播放量占比 */}

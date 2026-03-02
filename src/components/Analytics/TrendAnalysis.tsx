@@ -32,6 +32,16 @@ const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ data, rawData }) => {
   const [selectedPlatform, setSelectedPlatform] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'completionRate' | 'views' | 'publishDate'>('completionRate');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [periodFilter, setPeriodFilter] = useState<'7' | '30' | 'all'>('all');
+
+  // 按时间段过滤趋势数据
+  const filteredTrendData = useMemo(() => {
+    if (periodFilter === 'all' || data.length === 0) return data;
+    const days = periodFilter === '7' ? 7 : 30;
+    const latestTs = Math.max(...data.map(d => new Date(d.date).getTime()));
+    const cutoff = latestTs - days * 24 * 60 * 60 * 1000;
+    return data.filter(d => new Date(d.date).getTime() >= cutoff);
+  }, [data, periodFilter]);
 
   // 统一的图表主题色彩配置
   const chartThemeColors = {
@@ -221,13 +231,30 @@ const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ data, rawData }) => {
             <div className="relative flex items-center justify-between mb-8">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg">
-                  <TrendingUp className="w-6 h-6 text-white animate-pulse" />
+                  <TrendingUp className="w-6 h-6 text-white" />
                 </div>
                 <div>
                   <h3 className="text-2xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 bg-clip-text text-transparent mb-2">
                     数据趋势分析
                   </h3>
-                  <p className="text-gray-600 text-sm">展示各平台数据的时间变化趋势</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-gray-600 text-sm">展示各平台数据的时间变化趋势</p>
+                    <div className="flex gap-1 ml-2">
+                      {(['7', '30', 'all'] as const).map(p => (
+                        <button
+                          key={p}
+                          onClick={() => setPeriodFilter(p)}
+                          className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-all duration-200 cursor-pointer ${
+                            periodFilter === p
+                              ? 'bg-blue-600 text-white shadow-sm'
+                              : 'bg-white/80 text-gray-600 border border-gray-200 hover:bg-white hover:shadow-sm'
+                          }`}
+                        >
+                          {p === '7' ? '近7天' : p === '30' ? '近30天' : '全部'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
               
@@ -296,7 +323,7 @@ const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ data, rawData }) => {
               <div className="relative h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart
-                    data={data}
+                    data={filteredTrendData}
                     margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                   >
                     <defs>

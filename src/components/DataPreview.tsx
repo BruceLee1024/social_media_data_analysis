@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { UnifiedData, PlatformStat, TotalStats } from '../types';
-import { Eye, Download, BarChart3, UserPlus } from 'lucide-react';
+import { Eye, Download, BarChart3, UserPlus, Search, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { normalizeCompletionRate, formatCompletionRate, supportCompletionRate } from '../utils/completionRateUtils';
 
 interface DataPreviewProps {
@@ -9,9 +9,47 @@ interface DataPreviewProps {
   summary: any;
 }
 
+type SortField = '播放量' | '点赞量' | '评论量' | null;
+
 const DataPreview: React.FC<DataPreviewProps> = ({ data, onExport, summary }) => {
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [platformFilter, setPlatformFilter] = useState<string>('all');
+  const [sortField, setSortField] = useState<SortField>(null);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const itemsPerPage = 10;
+
+  const allPlatforms = useMemo(() => Array.from(new Set(data.map(r => r.来源平台))).sort(), [data]);
+
+  const filteredAndSortedData = useMemo(() => {
+    let result = data;
+    if (platformFilter !== 'all') result = result.filter(r => r.来源平台 === platformFilter);
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      result = result.filter(r => r.标题描述?.toLowerCase().includes(q));
+    }
+    if (sortField) {
+      result = [...result].sort((a, b) => {
+        const av = (a[sortField as keyof UnifiedData] as number) || 0;
+        const bv = (b[sortField as keyof UnifiedData] as number) || 0;
+        return sortDir === 'desc' ? bv - av : av - bv;
+      });
+    }
+    return result;
+  }, [data, platformFilter, searchQuery, sortField, sortDir]);
+
+  const handleSort = (field: '播放量' | '点赞量' | '评论量') => {
+    if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortField(field); setSortDir('desc'); }
+    setCurrentPage(1);
+  };
+
+  const SortIcon = ({ field }: { field: '播放量' | '点赞量' | '评论量' }) => {
+    if (sortField !== field) return <ChevronsUpDown className="w-3 h-3 ml-1 text-gray-400" />;
+    return sortDir === 'desc'
+      ? <ChevronDown className="w-3 h-3 ml-1 text-blue-500" />
+      : <ChevronUp className="w-3 h-3 ml-1 text-blue-500" />;
+  };
 
   // 平台配置：颜色主题和图标
   const platformConfig = {
@@ -86,9 +124,9 @@ const DataPreview: React.FC<DataPreviewProps> = ({ data, onExport, summary }) =>
       )
     };
   };
-  const totalPages = Math.ceil(data.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredAndSortedData.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const currentData = data.slice(startIndex, startIndex + itemsPerPage);
+  const currentData = filteredAndSortedData.slice(startIndex, startIndex + itemsPerPage);
 
   // 计算平台统计数据
   const platformStats = useMemo<Record<string, PlatformStat>>(() => {
@@ -269,20 +307,63 @@ const DataPreview: React.FC<DataPreviewProps> = ({ data, onExport, summary }) =>
       {/* 数据预览表格 */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-xl overflow-hidden">
         <div className="px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-slate-50 to-gray-100">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-4">
             <h3 className="text-xl font-bold text-gray-900 flex items-center">
               <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center mr-3">
                 <Eye className="w-5 h-5 text-white" />
               </div>
               数据预览
+              <span className="ml-3 text-sm font-normal text-gray-500">
+                {filteredAndSortedData.length !== data.length
+                  ? `已筛选 ${filteredAndSortedData.length} / ${data.length} 条`
+                  : `共 ${data.length} 条`}
+              </span>
             </h3>
             <button
               onClick={onExport}
-              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors cursor-pointer"
             >
               <Download className="w-4 h-4 mr-2" />
               导出Excel
             </button>
+          </div>
+          {/* 搜索 + 平台筛选 */}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative flex-1 min-w-48">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="搜索标题关键词..."
+                value={searchQuery}
+                onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
+              />
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => { setPlatformFilter('all'); setCurrentPage(1); }}
+                className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all cursor-pointer ${
+                  platformFilter === 'all'
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                全部
+              </button>
+              {allPlatforms.map(p => (
+                <button
+                  key={p}
+                  onClick={() => { setPlatformFilter(p); setCurrentPage(1); }}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all cursor-pointer ${
+                    platformFilter === p
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -299,14 +380,23 @@ const DataPreview: React.FC<DataPreviewProps> = ({ data, onExport, summary }) =>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   发布时间
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  播放量
+                <th
+                  className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-blue-600 select-none"
+                  onClick={() => handleSort('播放量')}
+                >
+                  <span className="inline-flex items-center justify-end">播放量<SortIcon field="播放量" /></span>
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  点赞量
+                <th
+                  className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-blue-600 select-none"
+                  onClick={() => handleSort('点赞量')}
+                >
+                  <span className="inline-flex items-center justify-end">点赞量<SortIcon field="点赞量" /></span>
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  评论量
+                <th
+                  className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-blue-600 select-none"
+                  onClick={() => handleSort('评论量')}
+                >
+                  <span className="inline-flex items-center justify-end">评论量<SortIcon field="评论量" /></span>
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   转发量
@@ -377,8 +467,8 @@ const DataPreview: React.FC<DataPreviewProps> = ({ data, onExport, summary }) =>
         {totalPages > 1 && (
           <div className="px-6 py-5 border-t border-gray-200 bg-gradient-to-r from-gray-50 to-slate-50 flex items-center justify-between">
             <div className="text-sm text-gray-700 font-medium">
-              显示第 <span className="font-bold text-gray-900">{startIndex + 1}-{Math.min(startIndex + itemsPerPage, data.length)}</span> 条，
-              共 <span className="font-bold text-gray-900">{data.length}</span> 条数据
+              显示第 <span className="font-bold text-gray-900">{startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredAndSortedData.length)}</span> 条，
+              共 <span className="font-bold text-gray-900">{filteredAndSortedData.length}</span> 条数据
             </div>
             <div className="flex space-x-3">
               <button

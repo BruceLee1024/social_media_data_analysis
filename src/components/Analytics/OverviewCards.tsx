@@ -305,8 +305,11 @@ const OverviewCards: React.FC<OverviewCardsProps> = ({
             </h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Object.entries(platformStats).map(([platform, stats]) => {
+            {(() => {
+              const totalAllViews = Object.values(platformStats).reduce((sum, s) => sum + s.totalViews, 0);
+              return Object.entries(platformStats).map(([platform, stats]) => {
               const config = getPlatformConfig(platform);
+              const viewsSharePct = totalAllViews > 0 ? Math.round((stats.totalViews / totalAllViews) * 100) : 0;
               return (
                 <div key={platform} className={`bg-gradient-to-br ${config.bgGradient} rounded-2xl border ${config.borderColor} shadow-lg overflow-hidden`}>
                   {/* 卡片头部 */}
@@ -333,6 +336,18 @@ const OverviewCards: React.FC<OverviewCardsProps> = ({
                         <div className="bg-white rounded-xl p-3 shadow-sm">
                           <div className="text-xs text-gray-500 mb-1">总播放量</div>
                           <div className={`text-lg font-bold ${config.textColor}`}>{formatNumber(stats.totalViews)}</div>
+                          <div className="mt-1.5">
+                            <div className="flex items-center justify-between mb-0.5">
+                              <span className="text-xs text-gray-400">占全平台</span>
+                              <span className="text-xs font-medium text-gray-500">{viewsSharePct}%</span>
+                            </div>
+                            <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full bg-gradient-to-r ${config.gradient} transition-all duration-500`}
+                                style={{ width: `${viewsSharePct}%` }}
+                              />
+                            </div>
+                          </div>
                         </div>
                         <div className="bg-white rounded-xl p-3 shadow-sm">
                           <div className="text-xs text-gray-500 mb-1">总点赞数</div>
@@ -404,7 +419,8 @@ const OverviewCards: React.FC<OverviewCardsProps> = ({
                   </div>
                 </div>
               );
-            })}
+            });
+            })()}
           </div>
         </div>
       )}

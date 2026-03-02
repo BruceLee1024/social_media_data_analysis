@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { Layers, Eye, Heart, MessageCircle, Share2, BookmarkPlus, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
+import { Layers, Eye, Heart, MessageCircle, Share2, BookmarkPlus, TrendingUp, ChevronDown, ChevronUp, Award } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { UnifiedData } from '../../types';
 import { matchContent } from '../../utils/contentMatcher';
 import { AnalyticsProcessor } from '../../utils/analyticsProcessor';
@@ -236,11 +237,61 @@ const CrossPlatformAnalysis: React.FC<CrossPlatformAnalysisProps> = ({ data }) =
                   </div>
 
                   {/* 展开详情：各平台数据横向对比 */}
-                  {isExpanded && (
+                  {isExpanded && (() => {
+                    const availablePlatforms = ALL_PLATFORMS.filter(p => group.platforms[p]);
+                    const chartData = availablePlatforms.map(p => ({
+                      platform: p,
+                      播放量: group.platforms[p].播放量 || 0,
+                      点赞量: group.platforms[p].点赞量 || 0,
+                    }));
+                    const maxViews = Math.max(...chartData.map(d => d.播放量));
+                    const bestPlatform = chartData.find(d => d.播放量 === maxViews)?.platform ?? '';
+                    const platformBarColors: Record<string, string> = {
+                      '抖音': '#374151', '视频号': '#10b981', '小红书': '#ef4444',
+                    };
+                    return (
                     <div className="border-t border-gray-100 bg-gray-50/50 p-4">
                       <p className="text-xs text-gray-400 mb-3">
                         发布时间：{group.publishDate ? group.publishDate.slice(0, 10) : '-'}
                       </p>
+
+                      {/* 内嵌小型柱状图 */}
+                      {availablePlatforms.length >= 2 && (
+                        <div className="mb-4 bg-white/80 rounded-xl border border-gray-100 p-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-xs font-semibold text-gray-500">平台数据对比</p>
+                            {bestPlatform && (
+                              <span className="flex items-center gap-1 text-xs font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                                <Award className="w-3 h-3" />
+                                {bestPlatform} 播放最佳
+                              </span>
+                            )}
+                          </div>
+                          <div className="h-28">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={chartData} margin={{ top: 4, right: 8, left: -12, bottom: 0 }} barCategoryGap="30%">
+                                <XAxis dataKey="platform" tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} />
+                                <YAxis tickFormatter={AnalyticsProcessor.formatNumber} tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                                <Tooltip
+                                  formatter={(v: number, name: string) => [AnalyticsProcessor.formatNumber(v), name]}
+                                  contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}
+                                />
+                                <Bar dataKey="播放量" name="播放量" radius={[4, 4, 0, 0]} maxBarSize={40}>
+                                  {chartData.map(entry => (
+                                    <Cell
+                                      key={entry.platform}
+                                      fill={platformBarColors[entry.platform] ?? '#6b7280'}
+                                      opacity={entry.platform === bestPlatform ? 1 : 0.45}
+                                    />
+                                  ))}
+                                </Bar>
+                                <Bar dataKey="点赞量" name="点赞量" radius={[4, 4, 0, 0]} maxBarSize={40} fill="#f87171" opacity={0.7} />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
+                      )}
+
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         {ALL_PLATFORMS.map(platform => {
                           const item = group.platforms[platform];
@@ -312,7 +363,8 @@ const CrossPlatformAnalysis: React.FC<CrossPlatformAnalysisProps> = ({ data }) =
                         })}
                       </div>
                     </div>
-                  )}
+                    );
+                  })()}
                 </div>
               );
             })}

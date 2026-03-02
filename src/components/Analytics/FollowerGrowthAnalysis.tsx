@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { UnifiedData } from '../../types';
 import { format, parseISO, startOfDay, eachDayOfInterval, min, max } from 'date-fns';
@@ -26,6 +26,8 @@ interface PlatformGrowthSummary {
 }
 
 const FollowerGrowthAnalysis: React.FC<FollowerGrowthAnalysisProps> = ({ data }) => {
+  const [growthMode, setGrowthMode] = useState<'daily' | 'cumulative'>('daily');
+
   // 统一的图表主题色彩配置
   const chartThemeColors = {
     primary: {
@@ -158,6 +160,19 @@ const FollowerGrowthAnalysis: React.FC<FollowerGrowthAnalysisProps> = ({ data })
     }).sort((a, b) => b.totalGrowth - a.totalGrowth);
   }, [data]);
 
+  // 累计模式计算
+  const displayGrowthData = useMemo(() => {
+    if (growthMode === 'daily') return dailyGrowthData;
+    let s抖 = 0, s视 = 0, s小 = 0, s总 = 0;
+    return dailyGrowthData.map(d => {
+      s抖 += d.抖音粉丝增量;
+      s视 += d.视频号粉丝增量;
+      s小 += d.小红书粉丝增量;
+      s总 += d.总粉丝增量;
+      return { date: d.date, 抖音粉丝增量: s抖, 视频号粉丝增量: s视, 小红书粉丝增量: s小, 总粉丝增量: s总 };
+    });
+  }, [dailyGrowthData, growthMode]);
+
   const formatTooltip = (value: number, name: string) => {
     const nameMap: Record<string, string> = {
       抖音粉丝增量: '抖音粉丝增量',
@@ -186,22 +201,49 @@ const FollowerGrowthAnalysis: React.FC<FollowerGrowthAnalysisProps> = ({ data })
         <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-indigo-400/10 to-blue-400/10 rounded-full blur-2xl"></div>
         
         {/* 标题区域 */}
-        <div className="relative mb-8 flex items-center space-x-4">
-          <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl shadow-lg animate-pulse">
-            <TrendingUp className="w-6 h-6 text-white" />
+        <div className="relative mb-8 flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl shadow-lg">
+              <TrendingUp className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent mb-1">
+                粉丝增长趋势
+              </h3>
+              <p className="text-gray-600 text-sm font-medium">
+                {growthMode === 'daily' ? '各平台每日粉丝增长情况' : '各平台累计粉丝增长走势'}
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent mb-1">
-              粉丝增长趋势
-            </h3>
-            <p className="text-gray-600 text-sm font-medium">各平台每日粉丝增长情况</p>
+          {/* 日/累计切换 */}
+          <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setGrowthMode('daily')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 cursor-pointer ${
+                growthMode === 'daily'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              日增量
+            </button>
+            <button
+              onClick={() => setGrowthMode('cumulative')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 cursor-pointer ${
+                growthMode === 'cumulative'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              累计增长
+            </button>
           </div>
         </div>
 
         <div className="relative h-80">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart
-              data={dailyGrowthData}
+              data={displayGrowthData}
               margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
             >
               <defs>
