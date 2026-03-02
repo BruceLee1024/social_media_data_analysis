@@ -13,7 +13,11 @@ import {
   CheckCircle,
   X,
   Plus,
-  FileText
+  FileText,
+  GitCompare,
+  ArrowUpRight,
+  ArrowDownRight,
+  Minus
 } from 'lucide-react';
 import { SnapshotManager, SnapshotData, SnapshotMetadata } from '../utils/snapshotManager';
 import { UnifiedData, AnalyticsData } from '../types';
@@ -124,6 +128,9 @@ const SnapshotManagerComponent: React.FC<SnapshotManagerProps> = ({
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [storageUsage, setStorageUsage] = useState({ used: 0, total: 0, percentage: 0 });
+  const [compareMode, setCompareMode] = useState(false);
+  const [compareIds, setCompareIds] = useState<string[]>([]);
+  const [compareSnapshots, setCompareSnapshots] = useState<[SnapshotData, SnapshotData] | null>(null);
 
   // 加载快照列表
   const loadSnapshots = () => {
@@ -187,6 +194,26 @@ const SnapshotManagerComponent: React.FC<SnapshotManagerProps> = ({
     } catch (error) {
       console.error('加载快照时发生错误:', error);
       showMessage('error', '加载快照时发生错误');
+    }
+  };
+
+  // 对比快照选择
+  const handleCompareSelect = (id: string) => {
+    let newIds: string[];
+    if (compareIds.includes(id)) {
+      newIds = compareIds.filter(i => i !== id);
+    } else if (compareIds.length < 2) {
+      newIds = [...compareIds, id];
+    } else {
+      newIds = [compareIds[1], id];
+    }
+    setCompareIds(newIds);
+    if (newIds.length === 2) {
+      const s1 = SnapshotManager.getSnapshot(newIds[0]);
+      const s2 = SnapshotManager.getSnapshot(newIds[1]);
+      if (s1 && s2) setCompareSnapshots([s1, s2]);
+    } else {
+      setCompareSnapshots(null);
     }
   };
 
@@ -279,6 +306,15 @@ const SnapshotManagerComponent: React.FC<SnapshotManagerProps> = ({
         </div>
         
         <div className="flex space-x-2">
+          <button
+            onClick={() => { setCompareMode(!compareMode); setCompareIds([]); setCompareSnapshots(null); }}
+            className={`flex items-center px-4 py-2 rounded-lg transition-colors ${
+              compareMode ? 'bg-purple-600 text-white hover:bg-purple-700' : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+            }`}
+          >
+            <GitCompare className="w-4 h-4 mr-2" />
+            {compareMode ? '退出对比' : '对比模式'}
+          </button>
           <button
             onClick={() => setIsCreateModalOpen(true)}
             disabled={processedData.length === 0}
@@ -379,7 +415,20 @@ const SnapshotManagerComponent: React.FC<SnapshotManagerProps> = ({
                   </div>
                 </div>
                 
-                <div className="flex space-x-2 ml-4">
+              <div className="flex space-x-2 ml-4">
+                  {compareMode && (
+                    <button
+                      onClick={() => handleCompareSelect(snapshot.id)}
+                      className={`p-2 rounded-lg transition-colors ${
+                        compareIds.includes(snapshot.id)
+                          ? 'bg-purple-600 text-white'
+                          : 'text-purple-600 hover:bg-purple-50'
+                      }`}
+                      title="选择对比"
+                    >
+                      <GitCompare className="w-4 h-4" />
+                    </button>
+                  )}
                   <button
                     onClick={() => handleLoadSnapshot(snapshot.id)}
                     className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
@@ -407,6 +456,73 @@ const SnapshotManagerComponent: React.FC<SnapshotManagerProps> = ({
           ))
         )}
       </div>
+
+      {/* 对比面板 */}
+      {compareMode && compareSnapshots && (() => {
+        const [s1, s2] = compareSnapshots;
+        const m1 = s1.data.analytics?.performanceMetrics;
+        const m2 = s2.data.analytics?.performanceMetrics;
+        const metrics = [
+          { label: '数据记录数', v1: s1.data.processedData?.length || 0, v2: s2.data.processedData?.length || 0 },
+          { label: '总播放量', v1: m1?.totalViews || 0, v2: m2?.totalViews || 0 },
+          { label: '总点赞量', v1: m1?.totalLikes || 0, v2: m2?.totalLikes || 0 },
+          { label: '总评论量', v1: m1?.totalComments || 0, v2: m2?.totalComments || 0 },
+          { label: '总分享量', v1: m1?.totalShares || 0, v2: m2?.totalShares || 0 },
+          { label: '内容总数', v1: m1?.totalContent || 0, v2: m2?.totalContent || 0 },
+        ];
+        const snapName = (id: string) => Object.values(snapshots).find(s => s.id === id)?.name || id;
+        return (
+          <div className="mt-6 border-2 border-purple-200 rounded-xl p-5 bg-purple-50">
+            <div className="flex items-center gap-2 mb-4">
+              <GitCompare className="w-5 h-5 text-purple-600" />
+              <h3 className="font-semibold text-purple-900">快照对比</h3>
+            </div>
+            {compareIds.length < 2 && (
+              <p className="text-sm text-purple-600 mb-3">请再选择一个快照进行对比（已选 {compareIds.length}/2）</p>
+            )}
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="text-xs text-gray-500 border-b border-purple-200">
+                    <th className="text-left py-2 px-3">指标</th>
+                    <th className="text-right py-2 px-3 text-purple-800">{snapName(compareIds[0])}</th>
+                    <th className="text-right py-2 px-3 text-purple-800">{snapName(compareIds[1])}</th>
+                    <th className="text-right py-2 px-3">变化</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {metrics.map(({ label, v1, v2 }) => {
+                    const diff = v2 - v1;
+                    const pct = v1 > 0 ? ((diff / v1) * 100).toFixed(1) : null;
+                    return (
+                      <tr key={label} className="border-b border-purple-100 hover:bg-purple-100/50">
+                        <td className="py-2 px-3 text-gray-700 font-medium">{label}</td>
+                        <td className="py-2 px-3 text-right">{v1.toLocaleString()}</td>
+                        <td className="py-2 px-3 text-right">{v2.toLocaleString()}</td>
+                        <td className="py-2 px-3 text-right">
+                          {diff === 0 ? (
+                            <span className="flex items-center justify-end text-gray-400">
+                              <Minus className="w-3 h-3 mr-1" />0%
+                            </span>
+                          ) : diff > 0 ? (
+                            <span className="flex items-center justify-end text-green-600 font-semibold">
+                              <ArrowUpRight className="w-3 h-3 mr-1" />{pct ? `+${pct}%` : `+${diff}`}
+                            </span>
+                          ) : (
+                            <span className="flex items-center justify-end text-red-500 font-semibold">
+                              <ArrowDownRight className="w-3 h-3 mr-1" />{pct ? `${pct}%` : diff}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* 创建快照模态框 */}
       <CreateSnapshotModal

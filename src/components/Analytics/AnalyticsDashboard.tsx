@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { BarChart3, TrendingUp, FileText, Award, ChartBar, Users, Activity, Save, Layers } from 'lucide-react';
+import React, { useState, useRef, useCallback } from 'react';
+import { BarChart3, TrendingUp, FileText, Award, ChartBar, Users, Activity, Save, Layers, FileDown, ClipboardList, X, Copy, Check } from 'lucide-react';
 import { AnalyticsData, UnifiedData } from '../../types';
 import OverviewCards from './OverviewCards';
 import PlatformComparison from './PlatformComparison';
@@ -9,6 +9,7 @@ import EngagementAnalysis from './EngagementAnalysis';
 import FollowerGrowthAnalysis from './FollowerGrowthAnalysis';
 import ContentPerformanceHeatmap from './ContentPerformanceHeatmap';
 import CrossPlatformAnalysis from './CrossPlatformAnalysis';
+import InsightCards from './InsightCards';
 import { SnapshotManager } from '../../utils/snapshotManager';
 
 interface AnalyticsDashboardProps {
@@ -22,6 +23,11 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ analytics, summ
   const [activeTab, setActiveTab] = useState<'overview' | 'platform' | 'trend' | 'content' | 'engagement' | 'followers' | 'heatmap' | 'crossplatform'>('overview');
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
+  const [showWeeklyReport, setShowWeeklyReport] = useState(false);
+  const [reportText, setReportText] = useState('');
+  const [reportCopied, setReportCopied] = useState(false);
+  const [pdfExporting, setPdfExporting] = useState(false);
+  const dashboardContentRef = useRef<HTMLDivElement>(null);
 
   const handleSaveSnapshot = async (name: string, description?: string) => {
     console.log('AnalyticsDashboard - Saving snapshot with goalData:', goalData);
@@ -53,6 +59,88 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ analytics, summ
       console.error('保存快照失败:', error);
       setSaveStatus('error');
       setTimeout(() => setSaveStatus('idle'), 3000);
+    }
+  };
+
+  // 生成文字周报
+  const generateWeeklyReport = useCallback(() => {
+    const { performanceMetrics, platformComparison } = analytics;
+    const today = new Date().toLocaleDateString('zh-CN');
+    let report = `===== 自媒体数据分析报告 =====\n生成日期：${today}\n\n`;
+    report += `【整体表现】\n`;
+    report += `- 总播放量：${performanceMetrics.totalViews.toLocaleString()} 次\n`;
+    report += `- 总点赞量：${performanceMetrics.totalLikes.toLocaleString()} 次\n`;
+    report += `- 总评论量：${performanceMetrics.totalComments.toLocaleString()} 次\n`;
+    if (performanceMetrics.totalShares > 0) {
+      report += `- 总分享量：${performanceMetrics.totalShares.toLocaleString()} 次\n`;
+    }
+    report += `- 平均互动率：${(performanceMetrics.avgEngagementRate * 100).toFixed(2)}%\n`;
+    report += `- 内容总数：${performanceMetrics.totalContent} 条\n`;
+    report += `- 最佳平台：${performanceMetrics.bestPerformingPlatform}\n\n`;
+    report += `【各平台表现】\n`;
+    platformComparison.forEach(p => {
+      report += `\n${p.platform}：\n`;
+      report += `  内容数量：${p.totalContent} 条\n`;
+      report += `  总播放量：${p.totalViews.toLocaleString()} 次\n`;
+      report += `  总点赞量：${p.totalLikes.toLocaleString()} 次\n`;
+      report += `  平均互动率：${(p.avgEngagementRate * 100).toFixed(2)}%\n`;
+    });
+    if (rawData && rawData.length > 0) {
+      const dayStats: Record<number, { total: number; count: number }> = {};
+      rawData.forEach(item => {
+        const d = new Date(item.发布时间).getDay();
+        if (!dayStats[d]) dayStats[d] = { total: 0, count: 0 };
+        dayStats[d].total += item.播放量 || 0;
+        dayStats[d].count++;
+      });
+      const dayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+      const bestDay = Object.entries(dayStats)
+        .map(([d, s]) => ({ day: dayNames[+d], avg: s.count ? s.total / s.count : 0 }))
+        .sort((a, b) => b.avg - a.avg)[0];
+      if (bestDay) {
+        report += `\n【发布建议】\n`;
+        report += `- 最佳发布日：${bestDay.day}（平均播放量 ${Math.round(bestDay.avg).toLocaleString()}）\n`;
+      }
+    }
+    report += `\n===== 报告结束 =====`;
+    return report;
+  }, [analytics, rawData]);
+
+  // PDF 导出
+  const handleExportPDF = async () => {
+    if (!dashboardContentRef.current) return;
+    setPdfExporting(true);
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const { jsPDF } = await import('jspdf');
+      const canvas = await html2canvas(dashboardContentRef.current, {
+        scale: 1.5,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#f8fafc',
+      });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pageWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      let position = 0;
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+      const dateStr = new Date().toLocaleDateString('zh-CN').replace(/\//g, '-');
+      pdf.save(`数据分析报告_${dateStr}.pdf`);
+    } catch (err) {
+      console.error('PDF导出失败:', err);
+    } finally {
+      setPdfExporting(false);
     }
   };
 
@@ -101,20 +189,28 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ analytics, summ
         // 如果有summary数据，传递给OverviewCards
         if (summary) {
           return (
-            <OverviewCards 
-              metrics={analytics.performanceMetrics}
-              totalDataCount={summary.总数据量}
-              totalPlatforms={Object.keys(summary.平台统计).length}
-              dateRange={summary.时间范围 ? {
-                start: summary.时间范围.最早,
-                end: summary.时间范围.最晚
-              } : undefined}
-              totalFollowers={summary.总涨粉数}
-              platformStats={summary.平台统计}
-            />
+            <>
+              <InsightCards analytics={analytics} rawData={rawData} />
+              <OverviewCards
+                metrics={analytics.performanceMetrics}
+                totalDataCount={summary.总数据量}
+                totalPlatforms={Object.keys(summary.平台统计).length}
+                dateRange={summary.时间范围 ? {
+                  start: summary.时间范围.最早,
+                  end: summary.时间范围.最晚
+                } : undefined}
+                totalFollowers={summary.总涨粉数}
+                platformStats={summary.平台统计}
+              />
+            </>
           );
         }
-        return <OverviewCards metrics={analytics.performanceMetrics} />;
+        return (
+          <>
+            <InsightCards analytics={analytics} rawData={rawData} />
+            <OverviewCards metrics={analytics.performanceMetrics} />
+          </>  
+        );
 
       case 'platform':
         return <PlatformComparison data={analytics.platformComparison} />;
@@ -147,6 +243,24 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ analytics, summ
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-900">数据分析</h2>
         <div className="flex items-center space-x-3">
+          {/* 生成周报按钮 */}
+          <button
+            onClick={() => { setReportText(generateWeeklyReport()); setShowWeeklyReport(true); }}
+            disabled={!rawData || rawData.length === 0}
+            className="flex items-center px-3 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+          >
+            <ClipboardList className="w-4 h-4 mr-1.5" />
+            生成周报
+          </button>
+          {/* 导出PDF按钮 */}
+          <button
+            onClick={handleExportPDF}
+            disabled={pdfExporting || !rawData || rawData.length === 0}
+            className="flex items-center px-3 py-2 bg-rose-600 text-white text-sm rounded-lg hover:bg-rose-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+          >
+            <FileDown className="w-4 h-4 mr-1.5" />
+            {pdfExporting ? '导出中...' : '导出PDF'}
+          </button>
           {/* Save Status Indicator */}
           {saveStatus === 'saving' && (
             <div className="flex items-center text-blue-600">
@@ -203,9 +317,48 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ analytics, summ
       </div>
 
       {/* Tab Content */}
-      <div className="min-h-96 overflow-visible">
+      <div className="min-h-96 overflow-visible" ref={dashboardContentRef}>
         {renderContent()}
       </div>
+
+      {/* 周报 Modal */}
+      {showWeeklyReport && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-2xl mx-4 max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                <ClipboardList className="w-5 h-5 mr-2 text-indigo-600" />
+                数据分析报告
+              </h3>
+              <button onClick={() => setShowWeeklyReport(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <textarea
+              readOnly
+              value={reportText}
+              className="flex-1 min-h-64 p-4 text-sm text-gray-800 bg-gray-50 border border-gray-200 rounded-lg resize-none font-mono leading-relaxed focus:outline-none"
+            />
+            <div className="flex justify-end gap-3 mt-4">
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(reportText).then(() => {
+                    setReportCopied(true);
+                    setTimeout(() => setReportCopied(false), 2000);
+                  });
+                }}
+                className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+              >
+                {reportCopied ? <Check className="w-4 h-4 mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
+                {reportCopied ? '已复制' : '复制文本'}
+              </button>
+              <button onClick={() => setShowWeeklyReport(false)} className="px-4 py-2 text-gray-600 hover:text-gray-800">
+                关闭
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Save Snapshot Modal */}
       {showSaveModal && (

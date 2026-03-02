@@ -284,6 +284,54 @@ const ContentPerformanceHeatmap: React.FC<ContentPerformanceHeatmapProps> = ({ d
           <div className="text-sm text-gray-600">平均互动量</div>
         </div>
       </div>
+
+      {/* TOP 3 最佳发布星期 */}
+      {(() => {
+        const dayStats: Record<number, { totalViews: number; count: number }> = {};
+        heatmapData.filter(d => d.count > 0 && d.isCurrentYear).forEach(d => {
+          if (!dayStats[d.dayIndex]) dayStats[d.dayIndex] = { totalViews: 0, count: 0 };
+          dayStats[d.dayIndex].totalViews += d.value;
+          dayStats[d.dayIndex].count += d.count;
+        });
+        const dayLabels = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+        const dayAvgs = Object.entries(dayStats)
+          .filter(([, s]) => s.count > 0)
+          .map(([d, s]) => ({ day: dayLabels[+d], avg: s.totalViews / s.count, count: s.count }))
+          .sort((a, b) => b.avg - a.avg);
+        if (dayAvgs.length === 0) return null;
+        const top3 = dayAvgs.slice(0, 3);
+        const maxAvg = top3[0].avg;
+        const rankColors = ['bg-yellow-400', 'bg-gray-400', 'bg-orange-400'];
+        return (
+          <div className="mt-6 bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200 rounded-xl p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <TrendingUp className="w-5 h-5 text-indigo-600" />
+              <h4 className="text-base font-semibold text-indigo-900">TOP 3 最佳发布星期</h4>
+              <span className="text-xs text-indigo-500 bg-indigo-100 px-2 py-0.5 rounded-full">按平均播放量</span>
+            </div>
+            <div className="space-y-3">
+              {top3.map((item, idx) => (
+                <div key={item.day} className="flex items-center gap-3">
+                  <span className={`w-7 h-7 flex items-center justify-center text-xs font-bold rounded-full text-white ${rankColors[idx]}`}>
+                    {idx + 1}
+                  </span>
+                  <span className="text-sm font-semibold text-gray-700 w-10">{item.day}</span>
+                  <span className="text-xs text-gray-400 w-12">{item.count}条内容</span>
+                  <div className="flex-1 bg-indigo-100 rounded-full h-3 overflow-hidden">
+                    <div
+                      className="h-3 rounded-full bg-gradient-to-r from-indigo-500 to-blue-500"
+                      style={{ width: `${(item.avg / maxAvg) * 100}%` }}
+                    />
+                  </div>
+                  <span className="text-sm font-bold text-indigo-700 w-24 text-right">
+                    {item.avg >= 10000 ? `${(item.avg / 10000).toFixed(1)}万` : Math.round(item.avg).toLocaleString()}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
     </div>
     
     {/* Portal悬浮框 - 渲染到body层级 */}

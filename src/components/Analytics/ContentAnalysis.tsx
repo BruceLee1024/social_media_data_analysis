@@ -667,6 +667,75 @@ const ContentAnalysis: React.FC<ContentAnalysisProps> = ({ contentTypes, topCont
           })()}
         </div>
       )}
+
+      {/* 关键词/话题表现分析 */}
+      {rawData && rawData.length > 0 && (() => {
+        const kwStats: Record<string, { total: number; count: number }> = {};
+        rawData.forEach(item => {
+          const title = item.标题描述 || '';
+          const views = item.播放量 || 0;
+          // 提取#话题标签
+          const tags = (title.match(/#([^#\s\uff03\u3000]+)/g) || []).map(t => t.replace(/^#/, '').trim()).filter(Boolean);
+          // 提取中文单词（2-6字）
+          const words = title
+            .replace(/#[^\s]*/g, '')
+            .split(/[\s\uff0c\u3002\uff01\uff1f\u3001\uff1b\uff1a\u201c\u201d\u2018\u2019\u300a\u300b\u3010\u3011\u2026\u2014\[\]\(\)\uff08\uff09,!?.;:'"]+/)
+            .map(w => w.trim())
+            .filter(w => w.length >= 2 && w.length <= 6 && /[\u4e00-\u9fa5]/.test(w));
+          [...tags, ...words].forEach(kw => {
+            if (!kwStats[kw]) kwStats[kw] = { total: 0, count: 0 };
+            kwStats[kw].total += views;
+            kwStats[kw].count++;
+          });
+        });
+        const keywords = Object.entries(kwStats)
+          .filter(([, s]) => s.count >= 2)
+          .map(([kw, s]) => ({ keyword: kw, avgViews: s.total / s.count, count: s.count }))
+          .sort((a, b) => b.avgViews - a.avgViews)
+          .slice(0, 20);
+        if (keywords.length === 0) return null;
+        const maxAvg = keywords[0].avgViews;
+        return (
+          <div className="relative bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/50 p-8 shadow-xl overflow-hidden">
+            <div className="absolute top-0 right-0 w-28 h-28 bg-gradient-to-br from-cyan-100/50 to-blue-100/50 rounded-full -translate-y-14 translate-x-14"></div>
+            <div className="relative mb-6">
+              <div className="flex items-center">
+                <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center mr-4">
+                  <Tag className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold bg-gradient-to-r from-gray-800 to-blue-700 bg-clip-text text-transparent">
+                    关键词/话题表现分析
+                  </h3>
+                  <p className="text-sm text-gray-600 mt-1">基于标题内容提取，出现≥ 2 次的关键词按平均播放量排列</p>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-2">
+              {keywords.map((item, idx) => (
+                <div key={idx} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                  <span className="text-xs font-bold text-gray-400 w-6 text-right">{idx + 1}</span>
+                  <span className={`text-sm font-semibold px-2 py-0.5 rounded-full ${
+                    item.keyword.includes('#') ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
+                  }`}>
+                    {item.keyword}
+                  </span>
+                  <span className="text-xs text-gray-400">×{item.count}</span>
+                  <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="h-2 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500"
+                      style={{ width: `${(item.avgViews / maxAvg) * 100}%` }}
+                    />
+                  </div>
+                  <span className="text-sm font-bold text-blue-700 w-20 text-right">
+                    {item.avgViews >= 10000 ? `${(item.avgViews / 10000).toFixed(1)}万` : Math.round(item.avgViews).toLocaleString()}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };

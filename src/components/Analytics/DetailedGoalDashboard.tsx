@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Users, TrendingUp, Target, Award, Eye, Heart, MessageCircle, Share2, BookmarkPlus, Calendar, ChevronDown, ChevronUp, Edit3, Save, X } from 'lucide-react';
+import { FileText, Users, TrendingUp, Target, Award, Eye, Heart, MessageCircle, Share2, BookmarkPlus, Calendar, ChevronDown, ChevronUp, Edit3, Save, X, Plus, AlertTriangle } from 'lucide-react';
 import { PerformanceMetrics } from '../../types';
 import { AnalyticsProcessor } from '../../utils/analyticsProcessor';
 import GoalSummaryTable from './GoalSummaryTable';
@@ -33,10 +33,45 @@ interface MonthlyGoal {
   };
 }
 
+const STORAGE_KEY = 'social_media_monthly_goals_v2';
+
+const DEFAULT_MONTHLY_GOALS: MonthlyGoal[] = [
+  {
+    month: '10月', period: '2024-10',
+    contentGoals: { totalVideos: 25, interviewVideos: 20, otherVideos: 5 },
+    fansGoals: { douyin: 1900, shipinhao: 2400, xiaohongshu: 700, total: 5000 },
+    engagementGoals: { totalViews: 40, viralCount: 1, totalInteractions: 12500, completionRate: 12 }
+  },
+  {
+    month: '11月', period: '2024-11',
+    contentGoals: { totalVideos: 25, interviewVideos: 20, otherVideos: 5 },
+    fansGoals: { douyin: 2700, shipinhao: 3300, xiaohongshu: 1000, total: 7000 },
+    engagementGoals: { totalViews: 50, viralCount: 1, totalInteractions: 17500, completionRate: 12 }
+  },
+  {
+    month: '12月', period: '2024-12',
+    contentGoals: { totalVideos: 25, interviewVideos: 20, otherVideos: 5 },
+    fansGoals: { douyin: 3400, shipinhao: 4300, xiaohongshu: 1300, total: 8000 },
+    engagementGoals: { totalViews: 60, viralCount: 1, totalInteractions: 20000, completionRate: 12 }
+  }
+];
+
 const DetailedGoalDashboard: React.FC<DetailedGoalDashboardProps> = ({ metrics, analytics, goalData, onGoalDataChange }) => {
   const [selectedMonth, setSelectedMonth] = useState<string>('年度');
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['content', 'fans', 'engagement']));
   const [editMode, setEditMode] = useState<boolean>(false);
+  const [showAddMonthModal, setShowAddMonthModal] = useState(false);
+  const [dynamicMonthlyGoals, setDynamicMonthlyGoals] = useState<MonthlyGoal[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      return saved ? JSON.parse(saved) : DEFAULT_MONTHLY_GOALS;
+    } catch { return DEFAULT_MONTHLY_GOALS; }
+  });
+  const [newMonthForm, setNewMonthForm] = useState({
+    period: '', douyinFans: 0, shipinhaoFans: 0, xiaohongshuFans: 0,
+    totalVideos: 20, interviewVideos: 15, otherVideos: 5,
+    totalViews: 0, viralCount: 1, totalInteractions: 0, completionRate: 12
+  });
   const [editingData, setEditingData] = useState(() => {
     // 如果有传入的goalData，使用它；否则使用默认值
     if (goalData) {
@@ -65,72 +100,48 @@ const DetailedGoalDashboard: React.FC<DetailedGoalDashboardProps> = ({ metrics, 
     }
   }, [goalData]);
 
-  // 目标数据
-  const monthlyGoals: MonthlyGoal[] = [
-    {
-      month: '10月',
-      period: '2024-10',
-      contentGoals: {
-        totalVideos: 25,
-        interviewVideos: 20,
-        otherVideos: 5
-      },
-      fansGoals: {
-        douyin: 1900,
-        shipinhao: 2400,
-        xiaohongshu: 700,
-        total: 5000
-      },
-      engagementGoals: {
-        totalViews: 40,
-        viralCount: 1,
-        totalInteractions: 12500, // 修复：改为12500次
-        completionRate: 12
-      }
-    },
-    {
-      month: '11月',
-      period: '2024-11',
-      contentGoals: {
-        totalVideos: 25,
-        interviewVideos: 20,
-        otherVideos: 5
-      },
-      fansGoals: {
-        douyin: 2700,
-        shipinhao: 3300,
-        xiaohongshu: 1000,
-        total: 7000
-      },
-      engagementGoals: {
-        totalViews: 50,
-        viralCount: 1,
-        totalInteractions: 17500, // 修复：改为17500次
-        completionRate: 12
-      }
-    },
-    {
-      month: '12月',
-      period: '2024-12',
-      contentGoals: {
-        totalVideos: 25,
-        interviewVideos: 20,
-        otherVideos: 5
-      },
-      fansGoals: {
-        douyin: 3400,
-        shipinhao: 4300,
-        xiaohongshu: 1300,
-        total: 8000
-      },
-      engagementGoals: {
-        totalViews: 60,
-        viralCount: 1,
-        totalInteractions: 20000, // 修复：改为20000次
-        completionRate: 12
-      }
-    }
-  ];
+  const saveMonthlyGoals = (goals: MonthlyGoal[]) => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(goals));
+    setDynamicMonthlyGoals(goals);
+  };
+
+  const handleAddMonth = () => {
+    if (!newMonthForm.period || !/^\d{4}-\d{2}$/.test(newMonthForm.period)) return;
+    const [y, m] = newMonthForm.period.split('-').map(Number);
+    const curY = new Date().getFullYear();
+    const displayName = y === curY ? `${m}月` : `${y}年${m}月`;
+    const existing = dynamicMonthlyGoals.find(g => g.period === newMonthForm.period);
+    if (existing) { alert('该月份目标已存在'); return; }
+    const newGoal: MonthlyGoal = {
+      month: displayName,
+      period: newMonthForm.period,
+      contentGoals: { totalVideos: newMonthForm.totalVideos, interviewVideos: newMonthForm.interviewVideos, otherVideos: newMonthForm.otherVideos },
+      fansGoals: { douyin: newMonthForm.douyinFans, shipinhao: newMonthForm.shipinhaoFans, xiaohongshu: newMonthForm.xiaohongshuFans, total: newMonthForm.douyinFans + newMonthForm.shipinhaoFans + newMonthForm.xiaohongshuFans },
+      engagementGoals: { totalViews: newMonthForm.totalViews, viralCount: newMonthForm.viralCount, totalInteractions: newMonthForm.totalInteractions, completionRate: newMonthForm.completionRate }
+    };
+    saveMonthlyGoals([...dynamicMonthlyGoals, newGoal]);
+    setSelectedMonth(displayName);
+    setShowAddMonthModal(false);
+    setNewMonthForm({ period: '', douyinFans: 0, shipinhaoFans: 0, xiaohongshuFans: 0, totalVideos: 20, interviewVideos: 15, otherVideos: 5, totalViews: 0, viralCount: 1, totalInteractions: 0, completionRate: 12 });
+  };
+
+  // 当月预计达成百分比
+  const computeForecastPct = (current: number, target: number): number | null => {
+    if (selectedMonth === '年度' || target <= 0) return null;
+    const goal = dynamicMonthlyGoals.find(g => g.month === selectedMonth);
+    if (!goal) return null;
+    const parts = goal.period.split('-').map(Number);
+    const [gy, gm] = parts;
+    const today = new Date();
+    if (today.getFullYear() !== gy || today.getMonth() + 1 !== gm) return null;
+    const daysInMonth = new Date(gy, gm, 0).getDate();
+    const elapsed = today.getDate();
+    if (elapsed === 0) return null;
+    return ((current / elapsed) * daysInMonth / target) * 100;
+  };
+
+  // 目标数据 (历史兼容保留，使用动态状态)
+  const monthlyGoals = dynamicMonthlyGoals;
 
   // 年度目标
   const yearlyGoals = {
@@ -234,6 +245,7 @@ const DetailedGoalDashboard: React.FC<DetailedGoalDashboardProps> = ({ metrics, 
     const percentage = getProgressPercentage(current, target);
     const progressColor = getProgressColor(percentage);
     const statusText = getStatusText(percentage);
+    const forecastPct = computeForecastPct(current, target);
 
     return (
       <div className={`bg-${color}-50 rounded-lg p-4 border border-${color}-100`}>
@@ -267,10 +279,18 @@ const DetailedGoalDashboard: React.FC<DetailedGoalDashboardProps> = ({ metrics, 
             ></div>
           </div>
           
-          <div className="text-right">
-            <span className={`text-sm font-semibold text-${color}-900`}>
-              {percentage.toFixed(1)}%
-            </span>
+          <div className="flex items-center justify-between">
+            <span className={`text-sm font-semibold text-${color}-900`}>{percentage.toFixed(1)}%</span>
+            {forecastPct !== null && (
+              <span className={`text-xs px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                forecastPct >= 100 ? 'bg-green-100 text-green-700' :
+                forecastPct >= 80 ? 'bg-yellow-100 text-yellow-700' :
+                'bg-red-100 text-red-700'
+              }`}>
+                {forecastPct < 80 && <AlertTriangle className="w-3 h-3" />}
+                预计{forecastPct.toFixed(0)}%
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -384,10 +404,17 @@ const DetailedGoalDashboard: React.FC<DetailedGoalDashboardProps> = ({ metrics, 
                 className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-white/50"
               >
                 <option value="年度" className="text-gray-900">年度目标</option>
-                <option value="10月" className="text-gray-900">10月目标</option>
-                <option value="11月" className="text-gray-900">11月目标</option>
-                <option value="12月" className="text-gray-900">12月目标</option>
+                {dynamicMonthlyGoals.map(g => (
+                  <option key={g.period} value={g.month} className="text-gray-900">{g.month}目标</option>
+                ))}
               </select>
+              <button
+                onClick={() => setShowAddMonthModal(true)}
+                className="flex items-center justify-center w-8 h-8 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+                title="添加月份目标"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
             </div>
           </div>
         </div>
@@ -514,6 +541,62 @@ const DetailedGoalDashboard: React.FC<DetailedGoalDashboardProps> = ({ metrics, 
           engagementGoals: selectedMonth === '年度' ? yearlyGoals.engagementGoals : currentGoal.engagementGoals
         }}
       />
+
+      {/* 添加月份目标 Modal */}
+      {showAddMonthModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">添加月份目标</h3>
+              <button onClick={() => setShowAddMonthModal(false)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">月份 (YYYY-MM) *</label>
+                <input type="month" value={newMonthForm.period} onChange={e => setNewMonthForm(f => ({ ...f, period: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">视频总数目标</label>
+                  <input type="number" min="0" value={newMonthForm.totalVideos} onChange={e => setNewMonthForm(f => ({ ...f, totalVideos: +e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">采访类视频</label>
+                  <input type="number" min="0" value={newMonthForm.interviewVideos} onChange={e => setNewMonthForm(f => ({ ...f, interviewVideos: +e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">抖音粉丝目标</label>
+                  <input type="number" min="0" value={newMonthForm.douyinFans} onChange={e => setNewMonthForm(f => ({ ...f, douyinFans: +e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">视频号粉丝</label>
+                  <input type="number" min="0" value={newMonthForm.shipinhaoFans} onChange={e => setNewMonthForm(f => ({ ...f, shipinhaoFans: +e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">小红书粉丝</label>
+                  <input type="number" min="0" value={newMonthForm.xiaohongshuFans} onChange={e => setNewMonthForm(f => ({ ...f, xiaohongshuFans: +e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">播放量目标 (次)</label>
+                  <input type="number" min="0" value={newMonthForm.totalViews} onChange={e => setNewMonthForm(f => ({ ...f, totalViews: +e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">互动量目标 (次)</label>
+                  <input type="number" min="0" value={newMonthForm.totalInteractions} onChange={e => setNewMonthForm(f => ({ ...f, totalInteractions: +e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button onClick={() => setShowAddMonthModal(false)} className="px-4 py-2 text-gray-600 hover:text-gray-800">取消</button>
+              <button onClick={handleAddMonth} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">添加</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

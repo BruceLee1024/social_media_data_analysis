@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { UnifiedData, PlatformStat, TotalStats } from '../types';
-import { Eye, Download, BarChart3, UserPlus, Search, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
+import { Eye, Download, BarChart3, UserPlus, Search, ChevronUp, ChevronDown, ChevronsUpDown, Flame, TrendingDown as TrendDown } from 'lucide-react';
 import { normalizeCompletionRate, formatCompletionRate, supportCompletionRate } from '../utils/completionRateUtils';
 
 interface DataPreviewProps {
@@ -124,6 +124,14 @@ const DataPreview: React.FC<DataPreviewProps> = ({ data, onExport, summary }) =>
       )
     };
   };
+  // 异常检测：计算播放量均值
+  const anomalyInfo = useMemo(() => {
+    const views = data.map(r => r.播放量 || 0).filter(v => v > 0);
+    if (views.length === 0) return { viralThreshold: Infinity, lowThreshold: 0 };
+    const mean = views.reduce((s, v) => s + v, 0) / views.length;
+    return { viralThreshold: mean * 2, lowThreshold: mean * 0.5 };
+  }, [data]);
+
   const totalPages = Math.ceil(filteredAndSortedData.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentData = filteredAndSortedData.slice(startIndex, startIndex + itemsPerPage);
@@ -413,8 +421,16 @@ const DataPreview: React.FC<DataPreviewProps> = ({ data, onExport, summary }) =>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {currentData.map((row, index) => (
-                <tr key={index} className="hover:bg-gray-50 transition-colors duration-200">
+              {currentData.map((row, index) => {
+                const views = row.播放量 || 0;
+                const isViral = views > anomalyInfo.viralThreshold;
+                const isLow = views > 0 && views < anomalyInfo.lowThreshold;
+                return (
+                <tr key={index} className={`transition-colors duration-200 ${
+                  isViral ? 'bg-orange-50/40 hover:bg-orange-50/60' :
+                  isLow ? 'bg-gray-50/60 hover:bg-gray-100/60 opacity-80' :
+                  'hover:bg-gray-50'
+                }`}>
                   <td className="px-4 py-4 whitespace-nowrap">
                     <span className={`px-3 py-1 text-xs font-semibold rounded-full shadow-sm ${
                       row.来源平台 === '抖音' ? 'bg-gradient-to-r from-red-500 to-pink-500 text-white' :
@@ -435,7 +451,11 @@ const DataPreview: React.FC<DataPreviewProps> = ({ data, onExport, summary }) =>
                     {row.发布时间.slice(0, 10)}
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm font-bold text-blue-700 text-right">
-                    {formatNumber(row.播放量)}
+                    <span className="inline-flex items-center justify-end gap-1">
+                      {isViral && <Flame className="w-3.5 h-3.5 text-orange-500" title="爆款内容：播放量超均值2倍" />}
+                      {isLow && <TrendDown className="w-3.5 h-3.5 text-gray-400" title="表现较差：播放量低于均值50%" />}
+                      {formatNumber(row.播放量)}
+                    </span>
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm font-bold text-red-600 text-right">
                     {formatNumber(row.点赞量)}
@@ -458,7 +478,8 @@ const DataPreview: React.FC<DataPreviewProps> = ({ data, onExport, summary }) =>
                     {formatNumber(row.粉丝增量)}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

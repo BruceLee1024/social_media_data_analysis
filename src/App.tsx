@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { Database, RefreshCcw, CheckCircle, AlertCircle, BarChart3, FileText, Target, Save } from 'lucide-react';
+import React, { useState, useCallback, useMemo } from 'react';
+import { Database, RefreshCcw, CheckCircle, AlertCircle, BarChart3, FileText, Target, Save, ShieldCheck } from 'lucide-react';
 import FileUpload from './components/FileUpload';
 import ProcessingProgress from './components/ProcessingProgress';
 import DataPreview from './components/DataPreview';
@@ -31,6 +31,22 @@ function App() {
   const [activeView, setActiveView] = useState<'home' | 'data' | 'analytics' | 'goals' | 'snapshots'>('home');
   const [showSnapshotManager, setShowSnapshotManager] = useState(false);
   const [goalData, setGoalData] = useState<any>(null);
+
+  // 数据质量统计
+  const dataQualityStats = useMemo(() => {
+    if (processedData.length === 0) return null;
+    const total = processedData.length;
+    const missingViews = processedData.filter(d => !d['播放量'] || d['播放量'] === 0).length;
+    const validCompletion = processedData.filter(d => d['完播率'] && d['完播率'] > 0).length;
+    const missingFans = processedData.filter(d => !d['粉丝增量'] || d['粉丝增量'] === 0).length;
+    const byPlatform: Record<string, number> = {};
+    processedData.forEach(d => {
+      const p = d['来源平台'] || '未知';
+      byPlatform[p] = (byPlatform[p] || 0) + 1;
+    });
+    const completeness = Math.round(((total - missingViews) / total) * 100);
+    return { total, missingViews, validCompletion, missingFans, byPlatform, completeness };
+  }, [processedData]);
 
   // 包装setGoalData以添加调试日志
   const handleGoalDataChange = (data: any) => {
@@ -534,6 +550,49 @@ function App() {
               {/* Processing Progress */}
               {steps.length > 0 && activeView === 'data' && (
                 <ProcessingProgress steps={steps} currentStep={currentStep} />
+              )}
+
+              {/* 数据质量报告 */}
+              {activeView === 'data' && dataQualityStats && (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <ShieldCheck className="w-5 h-5 text-blue-500" />
+                    <h3 className="text-sm font-semibold text-gray-800">数据质量报告</h3>
+                    <span className={`ml-auto text-xs px-2 py-0.5 rounded-full font-medium ${
+                      dataQualityStats.completeness >= 80 ? 'bg-green-100 text-green-700' :
+                      dataQualityStats.completeness >= 50 ? 'bg-yellow-100 text-yellow-700' :
+                      'bg-red-100 text-red-700'
+                    }`}>完整度 {dataQualityStats.completeness}%</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs mb-3">
+                    <div className="bg-gray-50 rounded-lg p-2">
+                      <div className="text-gray-500">总条数</div>
+                      <div className="font-semibold text-gray-900 text-sm">{dataQualityStats.total}</div>
+                    </div>
+                    <div className={`rounded-lg p-2 ${dataQualityStats.missingViews > 0 ? 'bg-red-50' : 'bg-gray-50'}`}>
+                      <div className="text-gray-500">播放量缺失</div>
+                      <div className={`font-semibold text-sm ${dataQualityStats.missingViews > 0 ? 'text-red-600' : 'text-gray-900'}`}>{dataQualityStats.missingViews} 条</div>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-2">
+                      <div className="text-gray-500">完播率有效</div>
+                      <div className="font-semibold text-gray-900 text-sm">{dataQualityStats.validCompletion} 条</div>
+                    </div>
+                    <div className={`rounded-lg p-2 ${dataQualityStats.missingFans > dataQualityStats.total * 0.5 ? 'bg-yellow-50' : 'bg-gray-50'}`}>
+                      <div className="text-gray-500">粉丝增量缺失</div>
+                      <div className={`font-semibold text-sm ${dataQualityStats.missingFans > dataQualityStats.total * 0.5 ? 'text-yellow-600' : 'text-gray-900'}`}>{dataQualityStats.missingFans} 条</div>
+                    </div>
+                  </div>
+                  <div className="border-t border-gray-100 pt-2">
+                    <div className="text-xs text-gray-500 mb-1">平台分布</div>
+                    <div className="flex flex-wrap gap-1">
+                      {Object.entries(dataQualityStats.byPlatform).map(([platform, count]) => (
+                        <span key={platform} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+                          {platform}: {count}条
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               )}
 
               {/* 数据处理页面 */}
