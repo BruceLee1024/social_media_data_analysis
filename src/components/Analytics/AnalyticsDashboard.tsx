@@ -123,6 +123,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ analytics, summ
           <ContentAnalysis 
             contentTypes={analytics.contentTypeAnalysis}
             topContent={analytics.topContent}
+            rawData={rawData}
           />
         );
       case 'engagement':

@@ -3,6 +3,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { TrendingUp, BarChart3, PlayCircle, Clock, Eye, Heart, MessageCircle, Share, Calendar, Filter, ArrowUpDown, Star, FileText } from 'lucide-react';
 import { TimeSeriesPoint, UnifiedData } from '../../types';
 import { AnalyticsProcessor } from '../../utils/analyticsProcessor';
+import { normalizeCompletionRate, formatCompletionRate, supportCompletionRate } from '../../utils/completionRateUtils';
 
 interface TrendAnalysisProps {
   data: TimeSeriesPoint[];
@@ -90,7 +91,7 @@ const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ data, rawData }) => {
     '小红书': chartThemeColors.pink.main,
   };
 
-  // 处理视频完播率数据（统一成百分比数值，例如 12.13 表示 12.13%）
+  // 处理视频完播率数据（使用统一的完播率处理工具）
   const videoCompletionData = useMemo((): VideoCompletionData[] => {
     if (!rawData || rawData.length === 0) {
       return [];
@@ -98,36 +99,10 @@ const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ data, rawData }) => {
 
     return rawData.map((item, index) => {
       const platform = item.来源平台 || '抖音';
-      let rate: any = item.完播率 || 0;
-      const rateStr = String(rate);
-
-      let completionRate = 0; // 统一为百分比数值
-
-      if (platform === '抖音') {
-        const parsed = typeof rate === 'number' ? rate : parseFloat(rateStr);
-        if (!isNaN(parsed)) {
-          // 如果数据是小数（<=1），则认为是小数形式，转换为百分比
-          completionRate = parsed <= 1 ? parsed * 100 : parsed;
-        }
-      } else if (platform === '视频号') {
-        if (rateStr.includes('%')) {
-          const parsed = parseFloat(rateStr.replace('%', ''));
-          completionRate = isNaN(parsed) ? 0 : parsed;
-        } else {
-          const parsed = parseFloat(rateStr);
-          // 视频号如果出现小数形式，同样转换为百分比
-          completionRate = isNaN(parsed) ? 0 : (parsed <= 1 ? parsed * 100 : parsed);
-        }
-      } else {
-        // 其他平台：尽量容错处理
-        if (rateStr.includes('%')) {
-          const parsed = parseFloat(rateStr.replace('%', ''));
-          completionRate = isNaN(parsed) ? 0 : parsed;
-        } else {
-          const parsed = parseFloat(rateStr);
-          completionRate = isNaN(parsed) ? 0 : (parsed <= 1 ? parsed * 100 : parsed);
-        }
-      }
+      const rawRate = item.完播率 || 0;
+      
+      // 使用统一的完播率处理函数
+      const completionRate = normalizeCompletionRate(rawRate, platform);
 
       return {
         id: `video-${index}`,
@@ -641,7 +616,7 @@ const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ data, rawData }) => {
                     />
                     <Tooltip 
                       formatter={(value: number, name: string, props: any) => {
-                        return [`${(value * 100).toFixed(1)}%`, '完播率'];
+                        return [formatCompletionRate(value), '完播率'];
                       }}
                       labelFormatter={(label, payload) => {
                         if (payload && payload.length > 0) {
@@ -776,18 +751,22 @@ const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ data, rawData }) => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
-                            <div className="text-sm font-semibold text-gray-900">{video.completionRate.toFixed(1)}%</div>
-                            <div 
-                              className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden"
-                            >
-                              <div 
-                                className="h-full rounded-full transition-all duration-300"
-                                style={{ 
-                                  width: `${video.completionRate}%`,
-                                  backgroundColor: getPlatformColor(video.platform)
-                                }}
-                              />
+                            <div className="text-sm font-semibold text-gray-900">
+                              {supportCompletionRate(video.platform) ? formatCompletionRate(video.completionRate) : '-'}
                             </div>
+                            {supportCompletionRate(video.platform) && (
+                              <div 
+                                className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden"
+                              >
+                                <div 
+                                  className="h-full rounded-full transition-all duration-300"
+                                  style={{ 
+                                    width: `${video.completionRate}%`,
+                                    backgroundColor: getPlatformColor(video.platform)
+                                  }}
+                                />
+                              </div>
+                            )}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">

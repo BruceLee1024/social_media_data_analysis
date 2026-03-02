@@ -43,62 +43,6 @@ const GoalSummaryTable: React.FC<GoalSummaryTableProps> = ({ metrics, goalData }
   // 构建表格数据
   const tableData: TableRow[] = [
     {
-      category: '内容创作目标',
-      icon: <FileText className="w-5 h-5 text-purple-600" />,
-      items: [
-        {
-          name: '总视频数',
-          current: goalData?.content?.totalVideos || 0,
-          target: goalData?.contentGoals?.totalVideos || 0,
-          unit: '个',
-          percentage: goalData?.contentGoals?.totalVideos ? 
-            Math.round((goalData.content.totalVideos / goalData.contentGoals.totalVideos) * 100) : 0,
-          status: getStatus(goalData?.contentGoals?.totalVideos ? 
-            Math.round((goalData.content.totalVideos / goalData.contentGoals.totalVideos) * 100) : 0)
-        },
-        {
-          name: '访谈视频',
-          current: goalData?.content?.interviewVideos || 0,
-          target: goalData?.contentGoals?.interviewVideos || 0,
-          unit: '个',
-          percentage: goalData?.contentGoals?.interviewVideos ? 
-            Math.round((goalData.content.interviewVideos / goalData.contentGoals.interviewVideos) * 100) : 0,
-          status: getStatus(goalData?.contentGoals?.interviewVideos ? 
-            Math.round((goalData.content.interviewVideos / goalData.contentGoals.interviewVideos) * 100) : 0)
-        },
-        {
-          name: '其他视频',
-          current: goalData?.content?.otherVideos || 0,
-          target: goalData?.contentGoals?.otherVideos || 0,
-          unit: '个',
-          percentage: goalData?.contentGoals?.otherVideos ? 
-            Math.round((goalData.content.otherVideos / goalData.contentGoals.otherVideos) * 100) : 0,
-          status: getStatus(goalData?.contentGoals?.otherVideos ? 
-            Math.round((goalData.content.otherVideos / goalData.contentGoals.otherVideos) * 100) : 0)
-        },
-        {
-          name: '商业视频',
-          current: goalData?.content?.businessVideos || 0,
-          target: goalData?.contentGoals?.businessVideos || 0,
-          unit: '个',
-          percentage: goalData?.contentGoals?.businessVideos ? 
-            Math.round((goalData.content.businessVideos / goalData.contentGoals.businessVideos) * 100) : 0,
-          status: getStatus(goalData?.contentGoals?.businessVideos ? 
-            Math.round((goalData.content.businessVideos / goalData.contentGoals.businessVideos) * 100) : 0)
-        },
-        {
-          name: '引流视频',
-          current: goalData?.content?.trafficVideos || 0,
-          target: goalData?.contentGoals?.trafficVideos || 0,
-          unit: '个',
-          percentage: goalData?.contentGoals?.trafficVideos ? 
-            Math.round((goalData.content.trafficVideos / goalData.contentGoals.trafficVideos) * 100) : 0,
-          status: getStatus(goalData?.contentGoals?.trafficVideos ? 
-            Math.round((goalData.content.trafficVideos / goalData.contentGoals.trafficVideos) * 100) : 0)
-        }
-      ]
-    },
-    {
       category: '粉丝增长目标',
       icon: <Users className="w-5 h-5 text-blue-600" />,
       items: [
@@ -187,6 +131,42 @@ const GoalSummaryTable: React.FC<GoalSummaryTableProps> = ({ metrics, goalData }
             Math.round((goalData.engagement.completionRate / goalData.engagementGoals.completionRate) * 100) : 0,
           status: getStatus(goalData?.engagementGoals?.completionRate ? 
             Math.round((goalData.engagement.completionRate / goalData.engagementGoals.completionRate) * 100) : 0)
+        }
+      ]
+    },
+    {
+      category: '内容创作目标',
+      icon: <FileText className="w-5 h-5 text-purple-600" />,
+      items: [
+        {
+          name: '总视频数',
+          current: goalData?.content?.totalVideos || 0,
+          target: goalData?.contentGoals?.totalVideos || 0,
+          unit: '个',
+          percentage: goalData?.contentGoals?.totalVideos ? 
+            Math.round((goalData.content.totalVideos / goalData.contentGoals.totalVideos) * 100) : 0,
+          status: getStatus(goalData?.contentGoals?.totalVideos ? 
+            Math.round((goalData.content.totalVideos / goalData.contentGoals.totalVideos) * 100) : 0)
+        },
+        {
+          name: '访谈视频',
+          current: goalData?.content?.interviewVideos || 0,
+          target: goalData?.contentGoals?.interviewVideos || 0,
+          unit: '个',
+          percentage: goalData?.contentGoals?.interviewVideos ? 
+            Math.round((goalData.content.interviewVideos / goalData.contentGoals.interviewVideos) * 100) : 0,
+          status: getStatus(goalData?.contentGoals?.interviewVideos ? 
+            Math.round((goalData.content.interviewVideos / goalData.contentGoals.interviewVideos) * 100) : 0)
+        },
+        {
+          name: '其他视频',
+          current: goalData?.content?.otherVideos || 0,
+          target: goalData?.contentGoals?.otherVideos || 0,
+          unit: '个',
+          percentage: goalData?.contentGoals?.otherVideos ? 
+            Math.round((goalData.content.otherVideos / goalData.contentGoals.otherVideos) * 100) : 0,
+          status: getStatus(goalData?.contentGoals?.otherVideos ? 
+            Math.round((goalData.content.otherVideos / goalData.contentGoals.otherVideos) * 100) : 0)
         }
       ]
     }

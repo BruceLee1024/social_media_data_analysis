@@ -1,15 +1,19 @@
 import React from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, LabelList } from 'recharts';
-import { ContentTypeMetrics, TopContentItem } from '../../types';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { ContentTypeMetrics, TopContentItem, UnifiedData } from '../../types';
 import { AnalyticsProcessor } from '../../utils/analyticsProcessor';
-import { Trophy, TrendingUp, Eye, Heart, PieChart as PieChartIcon, FileText, Activity, Star, MessageCircle, Share } from 'lucide-react';
+import { Trophy, TrendingUp, Eye, Heart, PieChart as PieChartIcon, FileText, Activity, MessageCircle, Tag } from 'lucide-react';
 
 interface ContentAnalysisProps {
   contentTypes: ContentTypeMetrics[];
   topContent: TopContentItem[];
+  rawData?: UnifiedData[];
 }
 
-const ContentAnalysis: React.FC<ContentAnalysisProps> = ({ contentTypes, topContent }) => {
+// 关键词配置
+const BRAND_KEYWORDS = ['广联达', 'Concetto', 'concetto', 'CONCETTO', '数维'];
+
+const ContentAnalysis: React.FC<ContentAnalysisProps> = ({ contentTypes, topContent, rawData }) => {
 
   // 统一的图表主题色彩配置
   const chartThemeColors = {
@@ -333,6 +337,336 @@ const ContentAnalysis: React.FC<ContentAnalysisProps> = ({ contentTypes, topCont
           </div>
         )}
       </div>
+
+      {/* 10万+播放量内容 */}
+      <div className="relative bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/50 p-8 shadow-xl overflow-hidden">
+        <div className="absolute top-0 right-0 w-28 h-28 bg-gradient-to-br from-green-100/50 to-teal-100/50 rounded-full -translate-y-14 translate-x-14"></div>
+        <div className="absolute bottom-0 left-0 w-20 h-20 bg-gradient-to-tr from-blue-100/50 to-cyan-100/50 rounded-full translate-y-10 -translate-x-10"></div>
+
+        <div className="relative mb-8">
+          <div className="flex items-center">
+            <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-teal-600 rounded-xl flex items-center justify-center mr-4 animate-pulse">
+              <TrendingUp className="w-5 h-5 text-white" />
+            </div>
+            <h3 className="text-xl font-bold bg-gradient-to-r from-gray-800 to-teal-700 bg-clip-text text-transparent">
+              10万+播放量内容
+            </h3>
+          </div>
+        </div>
+
+        {(() => {
+          const highViewContent = topContent.filter(item => (item.views || 0) >= 100000);
+          if (highViewContent.length === 0) {
+            return (
+              <div className="text-center py-12">
+                <div className="w-16 h-16 bg-gradient-to-br from-gray-200 to-gray-300 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Eye className="w-8 h-8 text-gray-500" />
+                </div>
+                <p className="text-gray-500 text-lg">暂无播放量超过10万的内容</p>
+              </div>
+            );
+          }
+
+          return (
+            <div className="relative space-y-4">
+              {/* 统计信息 */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                <div className="p-4 bg-green-50/60 border border-green-200 rounded-xl">
+                  <p className="text-xs text-gray-600 mb-1">内容数量</p>
+                  <p className="text-lg font-semibold text-green-700">{highViewContent.length}</p>
+                </div>
+                <div className="p-4 bg-blue-50/60 border border-blue-200 rounded-xl">
+                  <p className="text-xs text-gray-600 mb-1">平均播放量</p>
+                  <p className="text-lg font-semibold text-blue-700">
+                    {AnalyticsProcessor.formatNumber(Math.round(highViewContent.reduce((sum, c) => sum + (c.views || 0), 0) / highViewContent.length))}
+                  </p>
+                </div>
+                <div className="p-4 bg-purple-50/60 border border-purple-200 rounded-xl">
+                  <p className="text-xs text-gray-600 mb-1">最高播放量</p>
+                  <p className="text-lg font-semibold text-purple-700">
+                    {AnalyticsProcessor.formatNumber(Math.max(...highViewContent.map(c => c.views || 0)))}
+                  </p>
+                </div>
+              </div>
+
+              {highViewContent.map((content, index) => (
+                <div key={`high-${index}`} className="group relative p-6 bg-white/60 backdrop-blur-sm rounded-xl border border-gray-200/50 hover:bg-white/80 hover:shadow-lg transition-all duration-300 overflow-hidden">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center space-x-3 mb-3">
+                      <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getPlatformBadgeColor(content.platform)}`}>
+                        {content.platform}
+                      </span>
+                      <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                        {content.publishTime.slice(0, 10)}
+                      </span>
+                      <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">
+                        10万+
+                      </span>
+                    </div>
+
+                    <h4 className="text-base font-semibold text-gray-900 mb-3 line-clamp-2 group-hover:text-teal-700 transition-colors">
+                      {content.title}
+                    </h4>
+
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="flex items-center space-x-2 p-3 bg-blue-50/50 rounded-lg">
+                        <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                          <Eye className="w-4 h-4 text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-600">播放量</p>
+                          <p className="text-sm font-semibold text-gray-900">
+                            {AnalyticsProcessor.formatNumber(content.views)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-2 p-3 bg-red-50/50 rounded-lg">
+                        <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
+                          <Heart className="w-4 h-4 text-red-600" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-600">点赞量</p>
+                          <p className="text-sm font-semibold text-gray-900">
+                            {AnalyticsProcessor.formatNumber(content.likes)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-2 p-3 bg-purple-50/50 rounded-lg">
+                        <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                          <MessageCircle className="w-4 h-4 text-purple-600" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-600">评论量</p>
+                          <p className="text-sm font-semibold text-gray-900">
+                            {AnalyticsProcessor.formatNumber(content.comments)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* 品牌关键词内容统计 */}
+      {rawData && rawData.length > 0 && (
+        <div className="relative bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/50 p-8 shadow-xl overflow-hidden">
+          <div className="absolute top-0 right-0 w-28 h-28 bg-gradient-to-br from-indigo-100/50 to-purple-100/50 rounded-full -translate-y-14 translate-x-14"></div>
+          <div className="absolute bottom-0 left-0 w-20 h-20 bg-gradient-to-tr from-pink-100/50 to-rose-100/50 rounded-full translate-y-10 -translate-x-10"></div>
+
+          <div className="relative mb-8">
+            <div className="flex items-center">
+              <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center mr-4 animate-pulse">
+                <Tag className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold bg-gradient-to-r from-gray-800 to-purple-700 bg-clip-text text-transparent">
+                  品牌关键词内容统计
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  标题包含：广联达、Concetto、数维
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {(() => {
+            // 筛选包含关键词的内容（不区分大小写）
+            const brandContent = rawData.filter(item => {
+              const title = (item.标题描述 || '').toLowerCase();
+              return BRAND_KEYWORDS.some(keyword => title.includes(keyword.toLowerCase()));
+            });
+
+            if (brandContent.length === 0) {
+              return (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 bg-gradient-to-br from-gray-200 to-gray-300 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Tag className="w-8 h-8 text-gray-500" />
+                  </div>
+                  <p className="text-gray-500 text-lg">暂无包含品牌关键词的内容</p>
+                </div>
+              );
+            }
+
+            // 计算统计数据
+            const totalViews = brandContent.reduce((sum, item) => sum + (item.播放量 || 0), 0);
+            const totalLikes = brandContent.reduce((sum, item) => sum + (item.点赞量 || 0), 0);
+            const totalComments = brandContent.reduce((sum, item) => sum + (item.评论量 || 0), 0);
+            const totalShares = brandContent.reduce((sum, item) => sum + (item.分享量 || 0), 0);
+            const totalBookmarks = brandContent.reduce((sum, item) => sum + (item.收藏量 || 0), 0);
+            const totalInteractions = totalLikes + totalComments + totalShares + totalBookmarks;
+
+            // 按关键词分组统计
+            const keywordStats = BRAND_KEYWORDS.reduce((acc, keyword) => {
+              const items = rawData.filter(item => 
+                (item.标题描述 || '').toLowerCase().includes(keyword.toLowerCase())
+              );
+              if (items.length > 0) {
+                acc[keyword] = {
+                  count: items.length,
+                  totalViews: items.reduce((sum, item) => sum + (item.播放量 || 0), 0),
+                  avgViews: Math.round(items.reduce((sum, item) => sum + (item.播放量 || 0), 0) / items.length)
+                };
+              }
+              return acc;
+            }, {} as Record<string, { count: number; totalViews: number; avgViews: number }>);
+
+            // 按播放量排序
+            const sortedBrandContent = [...brandContent].sort((a, b) => (b.播放量 || 0) - (a.播放量 || 0));
+
+            return (
+              <div className="relative space-y-6">
+                {/* 总体统计 */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+                  <div className="p-4 bg-indigo-50/60 border border-indigo-200 rounded-xl">
+                    <p className="text-xs text-gray-600 mb-1">内容数量</p>
+                    <p className="text-lg font-semibold text-indigo-700">{brandContent.length}</p>
+                  </div>
+                  <div className="p-4 bg-blue-50/60 border border-blue-200 rounded-xl">
+                    <p className="text-xs text-gray-600 mb-1">总播放量</p>
+                    <p className="text-lg font-semibold text-blue-700">
+                      {AnalyticsProcessor.formatNumber(totalViews)}
+                    </p>
+                  </div>
+                  <div className="p-4 bg-red-50/60 border border-red-200 rounded-xl">
+                    <p className="text-xs text-gray-600 mb-1">总点赞量</p>
+                    <p className="text-lg font-semibold text-red-700">
+                      {AnalyticsProcessor.formatNumber(totalLikes)}
+                    </p>
+                  </div>
+                  <div className="p-4 bg-green-50/60 border border-green-200 rounded-xl">
+                    <p className="text-xs text-gray-600 mb-1">总评论量</p>
+                    <p className="text-lg font-semibold text-green-700">
+                      {AnalyticsProcessor.formatNumber(totalComments)}
+                    </p>
+                  </div>
+                  <div className="p-4 bg-purple-50/60 border border-purple-200 rounded-xl">
+                    <p className="text-xs text-gray-600 mb-1">总互动量</p>
+                    <p className="text-lg font-semibold text-purple-700">
+                      {AnalyticsProcessor.formatNumber(totalInteractions)}
+                    </p>
+                  </div>
+                  <div className="p-4 bg-orange-50/60 border border-orange-200 rounded-xl">
+                    <p className="text-xs text-gray-600 mb-1">平均播放量</p>
+                    <p className="text-lg font-semibold text-orange-700">
+                      {AnalyticsProcessor.formatNumber(Math.round(totalViews / brandContent.length))}
+                    </p>
+                  </div>
+                </div>
+
+                {/* 关键词分布 */}
+                <div className="p-4 bg-gradient-to-r from-gray-50/80 to-indigo-50/50 rounded-xl border border-gray-200/50">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3">关键词分布</h4>
+                  <div className="flex flex-wrap gap-3">
+                    {Object.entries(keywordStats).map(([keyword, stats]) => (
+                      <div key={keyword} className="px-4 py-2 bg-white rounded-lg border border-gray-200 shadow-sm">
+                        <span className="font-medium text-indigo-700">{keyword}</span>
+                        <span className="text-gray-500 ml-2">
+                          {stats.count}条 · 平均{AnalyticsProcessor.formatNumber(stats.avgViews)}播放
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 内容列表 */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-semibold text-gray-700">内容详情（按播放量排序）</h4>
+                  {sortedBrandContent.slice(0, 20).map((content, index) => (
+                    <div key={`brand-${index}`} className="group relative p-6 bg-white/60 backdrop-blur-sm rounded-xl border border-gray-200/50 hover:bg-white/80 hover:shadow-lg transition-all duration-300 overflow-hidden">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-3 mb-3">
+                          <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getPlatformBadgeColor(content.来源平台)}`}>
+                            {content.来源平台}
+                          </span>
+                          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                            {(content.发布时间 || '').slice(0, 10)}
+                          </span>
+                          {/* 显示匹配的关键词 */}
+                          {BRAND_KEYWORDS.filter(kw => 
+                            (content.标题描述 || '').toLowerCase().includes(kw.toLowerCase())
+                          ).map(kw => (
+                            <span key={kw} className="text-xs px-2 py-1 rounded-full bg-indigo-100 text-indigo-700">
+                              {kw}
+                            </span>
+                          ))}
+                        </div>
+
+                        <h4 className="text-base font-semibold text-gray-900 mb-3 line-clamp-2 group-hover:text-indigo-700 transition-colors">
+                          {content.标题描述}
+                        </h4>
+
+                        <div className="grid grid-cols-4 gap-4">
+                          <div className="flex items-center space-x-2 p-3 bg-blue-50/50 rounded-lg">
+                            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                              <Eye className="w-4 h-4 text-blue-600" />
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-600">播放量</p>
+                              <p className="text-sm font-semibold text-gray-900">
+                                {AnalyticsProcessor.formatNumber(content.播放量 || 0)}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center space-x-2 p-3 bg-red-50/50 rounded-lg">
+                            <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
+                              <Heart className="w-4 h-4 text-red-600" />
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-600">点赞量</p>
+                              <p className="text-sm font-semibold text-gray-900">
+                                {AnalyticsProcessor.formatNumber(content.点赞量 || 0)}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center space-x-2 p-3 bg-green-50/50 rounded-lg">
+                            <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                              <MessageCircle className="w-4 h-4 text-green-600" />
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-600">评论量</p>
+                              <p className="text-sm font-semibold text-gray-900">
+                                {AnalyticsProcessor.formatNumber(content.评论量 || 0)}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center space-x-2 p-3 bg-purple-50/50 rounded-lg">
+                            <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                              <TrendingUp className="w-4 h-4 text-purple-600" />
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-600">互动量</p>
+                              <p className="text-sm font-semibold text-gray-900">
+                                {AnalyticsProcessor.formatNumber(
+                                  (content.点赞量 || 0) + (content.评论量 || 0) + 
+                                  (content.分享量 || 0) + (content.收藏量 || 0)
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {sortedBrandContent.length > 20 && (
+                    <p className="text-center text-sm text-gray-500">
+                      仅显示前20条，共{sortedBrandContent.length}条内容
+                    </p>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      )}
     </div>
   );
 };

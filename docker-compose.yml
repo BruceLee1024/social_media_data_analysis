@@ -1,0 +1,26 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    environment:
+      - TZ=Asia/Shanghai
+    restart: unless-stopped
+
+  # Optional: development server with HMR exposed to host
+  dev:
+    image: node:18-alpine
+    working_dir: /app
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: sh -c "npm ci && npm run dev -- --host --port 5174"
+    ports:
+      - "5174:5174"
+    environment:
+      - TZ=Asia/Shanghai
+      - CHOKIDAR_USEPOLLING=true
+    restart: unless-stopped
+

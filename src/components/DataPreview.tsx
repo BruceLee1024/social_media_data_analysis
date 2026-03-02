@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { UnifiedData, PlatformStat, TotalStats } from '../types';
 import { Eye, Download, BarChart3, UserPlus } from 'lucide-react';
+import { normalizeCompletionRate, formatCompletionRate, supportCompletionRate } from '../utils/completionRateUtils';
 
 interface DataPreviewProps {
   data: UnifiedData[];
@@ -126,25 +127,8 @@ const DataPreview: React.FC<DataPreviewProps> = ({ data, onExport, summary }) =>
       }
       
       // 使用已处理过的完播率数据，排除小红书
-      if (platform !== '小红书' && row.完播率 > 0) {
-        let processedRate = row.完播率;
-        const rateStr = String(processedRate);
-        
-        if (platform === '抖音') {
-          // 抖音：直接使用原始数据
-          const parsed = typeof processedRate === 'number' ? processedRate : parseFloat(rateStr);
-          processedRate = isNaN(parsed) ? 0 : parsed;
-        } else if (platform === '视频号') {
-          // 视频号：统一处理，无论是否包含%符号
-          if (rateStr.includes('%')) {
-            const parsed = parseFloat(rateStr.replace('%', ''));
-            processedRate = isNaN(parsed) ? 0 : parsed;
-          } else {
-            const parsed = parseFloat(rateStr);
-            processedRate = isNaN(parsed) ? 0 : parsed;
-          }
-        }
-        
+      if (supportCompletionRate(platform) && row.完播率 > 0) {
+        const processedRate = normalizeCompletionRate(row.完播率, platform);
         acc[platform].avgCompletionRate += processedRate;
       }
       
@@ -160,9 +144,12 @@ const DataPreview: React.FC<DataPreviewProps> = ({ data, onExport, summary }) =>
       stats.avgBookmarks = stats.hasBookmarks ? stats.totalBookmarks / stats.count : 0;
       
       // 计算完播率平均值，排除小红书
-      if (platform !== '小红书') {
-        const validCompletionRateCount = data.filter(row => row.来源平台 === platform && row.完播率 > 0).length;
-        stats.avgCompletionRate = validCompletionRateCount > 0 ? stats.avgCompletionRate / validCompletionRateCount : 0;
+      if (supportCompletionRate(platform)) {
+        const validCompletionRateCount = data.filter(row => 
+          row.来源平台 === platform && row.完播率 > 0
+        ).length;
+        stats.avgCompletionRate = validCompletionRateCount > 0 ? 
+          stats.avgCompletionRate / validCompletionRateCount : 0;
       } else {
         stats.avgCompletionRate = 0;
       }
@@ -273,13 +260,8 @@ const DataPreview: React.FC<DataPreviewProps> = ({ data, onExport, summary }) =>
     return num.toLocaleString();
   };
 
-  const formatCompletionRate = (rate: number, platform: string, isProcessed = false) => {
-    if (isProcessed) {
-      return rate.toFixed(2) + '%';
-    } else {
-      // 所有平台都直接使用原始数据，不再对抖音进行特殊处理
-      return rate.toFixed(2) + '%';
-    }
+  const formatCompletionRateDisplay = (rate: number, platform: string) => {
+    return formatCompletionRate(rate);
   };
 
   return (
@@ -378,7 +360,9 @@ const DataPreview: React.FC<DataPreviewProps> = ({ data, onExport, summary }) =>
                     {row.来源平台 === '视频号' ? '-' : formatNumber(row.收藏量)}
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm font-bold text-indigo-600 text-right">
-                    {row.来源平台 === '小红书' ? '-' : (row.完播率 > 0 ? formatCompletionRate(row.完播率, row.来源平台) : '-')}
+                    {supportCompletionRate(row.来源平台) ? 
+                      (row.完播率 > 0 ? formatCompletionRate(normalizeCompletionRate(row.完播率, row.来源平台)) : '-') 
+                      : '-'}
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm font-bold text-emerald-600 text-right">
                     {formatNumber(row.粉丝增量)}

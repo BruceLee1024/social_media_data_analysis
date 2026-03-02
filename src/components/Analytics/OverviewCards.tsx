@@ -1,6 +1,7 @@
 import React from 'react';
 import { Eye, Heart, MessageCircle, Share2, Users, Trophy, TrendingUp, Calendar, Database, Target, BarChart3 } from 'lucide-react';
 import { PerformanceMetrics } from '../../types';
+import { formatCompletionRate, supportCompletionRate } from '../../utils/completionRateUtils';
 
 interface PlatformStat {
   count: number;
@@ -49,14 +50,7 @@ const OverviewCards: React.FC<OverviewCardsProps> = ({
     return num.toLocaleString();
   };
 
-  const formatCompletionRate = (rate: number, platform: string, isProcessed = false) => {
-    if (isProcessed) {
-      return rate.toFixed(2) + '%';
-    } else {
-      // 所有平台都直接使用原始数据，不再对抖音进行特殊处理
-      return rate.toFixed(2) + '%';
-    }
-  };
+
 
   // 平台配置：颜色主题和图标
   const platformConfig = {
@@ -398,7 +392,7 @@ const OverviewCards: React.FC<OverviewCardsProps> = ({
                         <div className="flex justify-between items-center py-2">
                           <span className="text-sm text-gray-600">平均完播率</span>
                           <span className={`font-semibold ${config.textColor}`}>
-                            {platform === '小红书' ? '-' : formatCompletionRate(stats.avgCompletionRate, platform, true)}
+                            {supportCompletionRate(platform) ? formatCompletionRate(stats.avgCompletionRate) : '-'}
                           </span>
                         </div>
                         <div className="flex justify-between items-center py-2">

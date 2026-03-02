@@ -1,5 +1,6 @@
 import { UnifiedData, AnalyticsData, PlatformMetrics, TimeSeriesPoint, ContentTypeMetrics, PerformanceMetrics, TopContentItem } from '../types';
 import { format, parseISO, startOfDay, eachDayOfInterval, min, max } from 'date-fns';
+import { calculateAverageCompletionRate } from './completionRateUtils';
 
 export class AnalyticsProcessor {
   static generateAnalytics(data: UnifiedData[]): AnalyticsData {
@@ -25,38 +26,8 @@ export class AnalyticsProcessor {
     return Object.entries(platformGroups).map(([platform, items]) => {
       const stats = this.calculateBasicStats(items);
       
-      // 计算平均完播率，需要根据平台进行不同的处理
-      const completionRates = items.map(item => {
-        const rate = item.完播率;
-        const rateStr = String(rate);
-        
-        if (platform === '抖音') {
-          // 抖音：直接使用原始数据，与generatePerformanceMetrics保持一致
-          const parsed = typeof rate === 'number' ? rate : parseFloat(rateStr);
-          return isNaN(parsed) ? 0 : parsed;
-        } else if (platform === '视频号') {
-          // 视频号：统一处理，无论是否包含%符号，与generatePerformanceMetrics保持一致
-          if (rateStr.includes('%')) {
-            const parsed = parseFloat(rateStr.replace('%', ''));
-            return isNaN(parsed) ? 0 : parsed;
-          } else {
-            const parsed = parseFloat(rateStr);
-            return isNaN(parsed) ? 0 : parsed;
-          }
-        } else {
-          // 其他平台：默认处理
-          if (rateStr.includes('%')) {
-            const parsed = parseFloat(rateStr.replace('%', ''));
-            return isNaN(parsed) ? 0 : parsed;
-          } else {
-            const parsed = parseFloat(rateStr);
-            return isNaN(parsed) ? 0 : parsed;
-          }
-        }
-      });
-      
-      const avgCompletionRate = completionRates.length > 0 ? 
-        completionRates.reduce((sum, rate) => sum + rate, 0) / completionRates.length : 0;
+      // 计算平均完播率，使用统一的计算逻辑
+      const avgCompletionRate = calculateAverageCompletionRate(items);
 
       return {
         platform,
@@ -204,46 +175,29 @@ export class AnalyticsProcessor {
 
   private static generatePerformanceMetrics(data: UnifiedData[]): PerformanceMetrics {
     const stats = this.calculateBasicStats(data);
-    const totalContent = data.length;
+    // 只统计已发布的视频号数据作为视频总数
+    const publishedShipinhaoData = data.filter(item => 
+      item.来源平台 === '视频号' && 
+      item.发布时间 && 
+      item.发布时间.trim() !== '' &&
+      !isNaN(new Date(item.发布时间).getTime())
+    );
+    const totalContent = publishedShipinhaoData.length;
 
-    // 计算平均完播率 - 只计算抖音和视频号的平均值
-    const douyinRates = data.filter(item => item.完播率 > 0 && item.来源平台 === '抖音').map(item => {
-      const rate = item.完播率;
-      const rateStr = String(rate);
-      const parsed = typeof rate === 'number' ? rate : parseFloat(rateStr);
-      return isNaN(parsed) ? 0 : parsed;
-    });
+    // 计算完播率：先计算抖音的完播率，再计算视频号的完播率，最后两个相加除以2
+    const douyinData = data.filter(item => item.来源平台 === '抖音');
+    const videoAccountData = data.filter(item => item.来源平台 === '视频号');
+    
+    const douyinCompletionRate = calculateAverageCompletionRate(douyinData);
+    const videoAccountCompletionRate = calculateAverageCompletionRate(videoAccountData);
+    
+    // 两个平台的完播率相加除以2（无论是否为0都参与计算）
+    const avgCompletionRate = (douyinCompletionRate + videoAccountCompletionRate) / 2;
 
-    const shipinhaoRates = data.filter(item => item.完播率 > 0 && item.来源平台 === '视频号').map(item => {
-      const rate = item.完播率;
-      const rateStr = String(rate);
-      if (rateStr.includes('%')) {
-        const parsed = parseFloat(rateStr.replace('%', ''));
-        return isNaN(parsed) ? 0 : parsed;
-      } else {
-        const parsed = parseFloat(rateStr);
-        return isNaN(parsed) ? 0 : parsed;
-      }
-    });
-
-    // 计算抖音和视频号的平均完播率
-    const douyinAvg = douyinRates.length > 0 ? 
-      douyinRates.reduce((sum, rate) => sum + rate, 0) / douyinRates.length : 0;
-    const shipinhaoAvg = shipinhaoRates.length > 0 ? 
-      shipinhaoRates.reduce((sum, rate) => sum + rate, 0) / shipinhaoRates.length : 0;
-
-    // 计算两个平台的平均值
-    let avgCompletionRate = 0;
-    if (douyinAvg > 0 && shipinhaoAvg > 0) {
-      avgCompletionRate = (douyinAvg + shipinhaoAvg) / 2;
-    } else if (douyinAvg > 0) {
-      avgCompletionRate = douyinAvg;
-    } else if (shipinhaoAvg > 0) {
-      avgCompletionRate = shipinhaoAvg;
-    }
-
-    // 计算爆款数量（播放量≥50000）
-    const viralContentCount = data.filter(item => item.播放量 >= 50000).length;
+    // 计算爆款数量（仅统计视频号平台且播放量≥60000）
+    const viralContentCount = data.filter(item => 
+      item.来源平台 === '视频号' && item.播放量 >= 60000
+    ).length;
 
     // 找出表现最好的平台 - 基于总互动量
     const platformPerformance = this.generatePlatformComparison(data);
@@ -289,10 +243,16 @@ export class AnalyticsProcessor {
       ? Math.round(corePlatforms.reduce((sum, item) => sum + (item.播放量 || 0), 0) / corePlatforms.length)
       : 0;
 
+    // 全平台（抖音+小红书+视频号）平均播放量
+    const allPlatformsAvgViews = data.length > 0
+      ? Math.round(data.reduce((sum, item) => sum + (item.播放量 || 0), 0) / data.length)
+      : 0;
+
     return {
       ...stats,
       avgCompletionRate,
       avgViewsDouyinShipinhao: coreAvgViews,
+      avgViewsAllPlatforms: allPlatformsAvgViews,
       bestPerformingPlatform,
       contentGrowthRate,
       totalContent,

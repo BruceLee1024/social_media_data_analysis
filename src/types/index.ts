@@ -116,6 +116,7 @@ export interface PerformanceMetrics {
   avgEngagementRate: number;
   avgCompletionRate?: number;
   avgViewsDouyinShipinhao?: number;
+  avgViewsAllPlatforms?: number;
   bestPerformingPlatform: string;
   contentGrowthRate: number;
   totalContent: number;

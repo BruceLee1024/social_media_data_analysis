@@ -18,8 +18,6 @@ interface MonthlyGoal {
     totalVideos: number;
     interviewVideos: number;
     otherVideos: number;
-    businessVideos: number;
-    trafficVideos: number;
   };
   fansGoals: {
     douyin: number;
@@ -48,9 +46,7 @@ const DetailedGoalDashboard: React.FC<DetailedGoalDashboardProps> = ({ metrics, 
       content: {
         totalVideos: 14, // 基于视频号的当前视频数量
         interviewVideos: 0,
-        otherVideos: 0,
-        businessVideos: 0,
-        trafficVideos: 0 // 引流类也改为手动输入
+        otherVideos: 0
       },
       fans: {
         douyin: 0,
@@ -77,9 +73,7 @@ const DetailedGoalDashboard: React.FC<DetailedGoalDashboardProps> = ({ metrics, 
       contentGoals: {
         totalVideos: 25,
         interviewVideos: 20,
-        otherVideos: 5,
-        businessVideos: 8,
-        trafficVideos: 17
+        otherVideos: 5
       },
       fansGoals: {
         douyin: 1900,
@@ -100,9 +94,7 @@ const DetailedGoalDashboard: React.FC<DetailedGoalDashboardProps> = ({ metrics, 
       contentGoals: {
         totalVideos: 25,
         interviewVideos: 20,
-        otherVideos: 5,
-        businessVideos: 8,
-        trafficVideos: 17
+        otherVideos: 5
       },
       fansGoals: {
         douyin: 2700,
@@ -123,9 +115,7 @@ const DetailedGoalDashboard: React.FC<DetailedGoalDashboardProps> = ({ metrics, 
       contentGoals: {
         totalVideos: 25,
         interviewVideos: 20,
-        otherVideos: 5,
-        businessVideos: 7,
-        trafficVideos: 18
+        otherVideos: 5
       },
       fansGoals: {
         douyin: 3400,
@@ -147,9 +137,7 @@ const DetailedGoalDashboard: React.FC<DetailedGoalDashboardProps> = ({ metrics, 
     contentGoals: {
       totalVideos: 75,
       interviewVideos: 60,
-      otherVideos: 15,
-      businessVideos: 23,
-      trafficVideos: 52
+      otherVideos: 15
     },
     fansGoals: {
       douyin: 8000,
@@ -168,14 +156,12 @@ const DetailedGoalDashboard: React.FC<DetailedGoalDashboardProps> = ({ metrics, 
   // 获取当前目标
   const currentGoal = selectedMonth === '年度' ? yearlyGoals : monthlyGoals.find(goal => goal.month === selectedMonth) || monthlyGoals[0];
 
-  // 计算当前数据（使用手动输入的数据）
+  // 计算当前数据（使用实际数据和手动输入的数据结合）
   const currentData = {
     content: {
-      totalVideos: editingData.content.totalVideos,
+      totalVideos: metrics?.totalContent || editingData.content.totalVideos, // 优先使用实际的已发布视频号数据
       interviewVideos: editingData.content.interviewVideos,
-      otherVideos: editingData.content.otherVideos,
-      businessVideos: editingData.content.businessVideos,
-      trafficVideos: editingData.content.trafficVideos // 引流类改为手动输入
+      otherVideos: editingData.content.otherVideos
     },
     fans: {
       douyin: editingData.fans.douyin,
@@ -407,45 +393,6 @@ const DetailedGoalDashboard: React.FC<DetailedGoalDashboardProps> = ({ metrics, 
         </div>
       </div>
 
-      {/* 内容创作目标 */}
-      <div className="bg-white rounded-xl p-6 border border-gray-200">
-        <div 
-          className="flex items-center justify-between cursor-pointer"
-          onClick={() => toggleSection('content')}
-        >
-          <div className="flex items-center space-x-3">
-            <FileText className="w-6 h-6 text-blue-600" />
-            <h3 className="text-xl font-semibold text-gray-900">内容创作目标</h3>
-          </div>
-          {expandedSections.has('content') ? 
-            <ChevronUp className="w-5 h-5 text-gray-500" /> : 
-            <ChevronDown className="w-5 h-5 text-gray-500" />
-          }
-        </div>
-        
-        {expandedSections.has('content') && (
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {selectedMonth === '年度' ? (
-              <>
-                {renderEditableProgressCard('视频总数', currentData.content.totalVideos, yearlyGoals.contentGoals.totalVideos, '条', FileText, 'blue', 'content', 'totalVideos')}
-                {renderEditableProgressCard('采访类视频', currentData.content.interviewVideos, yearlyGoals.contentGoals.interviewVideos, '条', MessageCircle, 'green', 'content', 'interviewVideos')}
-                {renderEditableProgressCard('其他类视频', currentData.content.otherVideos, yearlyGoals.contentGoals.otherVideos, '条', Share2, 'purple', 'content', 'otherVideos')}
-                {renderEditableProgressCard('公司业务类', currentData.content.businessVideos, yearlyGoals.contentGoals.businessVideos, '条', Target, 'indigo', 'content', 'businessVideos')}
-                {renderEditableProgressCard('引流类', currentData.content.trafficVideos, yearlyGoals.contentGoals.trafficVideos, '条', TrendingUp, 'pink', 'content', 'trafficVideos')}
-              </>
-            ) : (
-              <>
-                {renderEditableProgressCard('视频总数', currentData.content.totalVideos, currentGoal.contentGoals.totalVideos, '条', FileText, 'blue', 'content', 'totalVideos')}
-                {renderEditableProgressCard('采访类视频', currentData.content.interviewVideos, currentGoal.contentGoals.interviewVideos, '条', MessageCircle, 'green', 'content', 'interviewVideos')}
-                {renderEditableProgressCard('其他类视频', currentData.content.otherVideos, currentGoal.contentGoals.otherVideos, '条', Share2, 'purple', 'content', 'otherVideos')}
-                {renderEditableProgressCard('公司业务类', currentData.content.businessVideos, currentGoal.contentGoals.businessVideos, '条', Target, 'indigo', 'content', 'businessVideos')}
-                {renderEditableProgressCard('引流类', currentData.content.trafficVideos, currentGoal.contentGoals.trafficVideos, '条', TrendingUp, 'pink', 'content', 'trafficVideos')}
-              </>
-            )}
-          </div>
-        )}
-      </div>
-
       {/* 粉丝增长目标 */}
       <div className="bg-white rounded-xl p-6 border border-gray-200">
         <div 
@@ -514,6 +461,41 @@ const DetailedGoalDashboard: React.FC<DetailedGoalDashboardProps> = ({ metrics, 
                 {renderProgressCard('爆款视频', currentData.engagement.viralCount, currentGoal.engagementGoals.viralCount, '个', Award, 'yellow')}
                 {renderProgressCard('总互动量', currentData.engagement.totalInteractions, currentGoal.engagementGoals.totalInteractions, '次', Heart, 'red')}
                 {renderProgressCard('完播率', currentData.engagement.completionRate, currentGoal.engagementGoals.completionRate, '%', BookmarkPlus, 'green')}
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* 内容创作目标 */}
+      <div className="bg-white rounded-xl p-6 border border-gray-200">
+        <div 
+          className="flex items-center justify-between cursor-pointer"
+          onClick={() => toggleSection('content')}
+        >
+          <div className="flex items-center space-x-3">
+            <FileText className="w-6 h-6 text-blue-600" />
+            <h3 className="text-xl font-semibold text-gray-900">内容创作目标</h3>
+          </div>
+          {expandedSections.has('content') ? 
+            <ChevronUp className="w-5 h-5 text-gray-500" /> : 
+            <ChevronDown className="w-5 h-5 text-gray-500" />
+          }
+        </div>
+        
+        {expandedSections.has('content') && (
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {selectedMonth === '年度' ? (
+              <>
+                {renderEditableProgressCard('视频总数', currentData.content.totalVideos, yearlyGoals.contentGoals.totalVideos, '条', FileText, 'blue', 'content', 'totalVideos')}
+                {renderEditableProgressCard('采访类视频', currentData.content.interviewVideos, yearlyGoals.contentGoals.interviewVideos, '条', MessageCircle, 'green', 'content', 'interviewVideos')}
+                {renderEditableProgressCard('其他类视频', currentData.content.otherVideos, yearlyGoals.contentGoals.otherVideos, '条', Share2, 'purple', 'content', 'otherVideos')}
+              </>
+            ) : (
+              <>
+                {renderEditableProgressCard('视频总数', currentData.content.totalVideos, currentGoal.contentGoals.totalVideos, '条', FileText, 'blue', 'content', 'totalVideos')}
+                {renderEditableProgressCard('采访类视频', currentData.content.interviewVideos, currentGoal.contentGoals.interviewVideos, '条', MessageCircle, 'green', 'content', 'interviewVideos')}
+                {renderEditableProgressCard('其他类视频', currentData.content.otherVideos, currentGoal.contentGoals.otherVideos, '条', Share2, 'purple', 'content', 'otherVideos')}
               </>
             )}
           </div>

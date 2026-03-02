@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { UnifiedData } from '../../types';
+import { normalizeCompletionRate, formatCompletionRate, supportCompletionRate } from '../../utils/completionRateUtils';
 
 interface CompletionRateAnalysisProps {
   data: UnifiedData[];
@@ -30,34 +31,15 @@ const CompletionRateAnalysis: React.FC<CompletionRateAnalysisProps> = ({ data })
   // 处理视频完播率数据
   const videoCompletionData = useMemo((): VideoCompletionData[] => {
     return data
-      .filter(item => {
-        if (item.来源平台 === '小红书') return false; // 小红书没有完播率数据
-        return item.完播率 > 0;
-      })
+      .filter(item => supportCompletionRate(item.来源平台) && item.完播率 > 0)
       .map((item, index) => {
-        let completionRate = item.完播率;
-        const rateStr = String(completionRate);
-        
-        if (item.来源平台 === '抖音') {
-          // 抖音：直接使用原始数据，不再乘以100
-          const parsed = typeof completionRate === 'number' ? completionRate : parseFloat(rateStr);
-          completionRate = isNaN(parsed) ? 0 : parsed;
-        } else if (item.来源平台 === '视频号') {
-          // 视频号：统一处理，无论是否包含%符号
-          if (rateStr.includes('%')) {
-            const parsed = parseFloat(rateStr.replace('%', ''));
-            completionRate = isNaN(parsed) ? 0 : parsed;
-          } else {
-            const parsed = parseFloat(rateStr);
-            completionRate = isNaN(parsed) ? 0 : parsed;
-          }
-        }
+        const normalizedRate = normalizeCompletionRate(item.完播率, item.来源平台);
 
         return {
           id: `video_${index}`,
           title: item.标题描述,
           platform: item.来源平台,
-          completionRate: Number(completionRate.toFixed(2)),
+          completionRate: Number(normalizedRate.toFixed(2)),
           views: item.播放量,
           publishDate: item.发布时间 || new Date().toISOString().split('T')[0],
           engagement: item.点赞量 + item.评论量 + item.分享量,
