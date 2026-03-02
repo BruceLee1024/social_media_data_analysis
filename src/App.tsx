@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { Database, RefreshCcw, CheckCircle, AlertCircle, BarChart3, FileText, Target, Save, ShieldCheck } from 'lucide-react';
+import { Database, RefreshCcw, CheckCircle, AlertCircle, BarChart3, FileText, Target, Save, ShieldCheck, PlusCircle } from 'lucide-react';
+import { useTheme, THEMES, Theme } from './utils/themeContext';
 import FileUpload from './components/FileUpload';
 import ProcessingProgress from './components/ProcessingProgress';
 import DataPreview from './components/DataPreview';
@@ -20,7 +21,9 @@ interface ProcessingStep {
 }
 
 function App() {
+  const { theme, config: themeConfig, setTheme } = useTheme();
   const [files, setFiles] = useState<File[]>([]);
+  const [appendMode, setAppendMode] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processedData, setProcessedData] = useState<UnifiedData[]>([]);
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
@@ -77,17 +80,21 @@ function App() {
   const handleFilesSelected = useCallback((newFiles: File[]) => {
     setFiles(prev => [...prev, ...newFiles]);
     setError('');
-    setProcessedData([]);
-    setAnalytics(null);
-    setSummary(null);
-  }, []);
+    if (!appendMode) {
+      setProcessedData([]);
+      setAnalytics(null);
+      setSummary(null);
+    }
+  }, [appendMode]);
 
   const handleRemoveFile = useCallback((index: number) => {
     setFiles(prev => prev.filter((_, i) => i !== index));
-    setProcessedData([]);
-    setAnalytics(null);
-    setSummary(null);
-  }, []);
+    if (!appendMode) {
+      setProcessedData([]);
+      setAnalytics(null);
+      setSummary(null);
+    }
+  }, [appendMode]);
 
   const processFiles = async () => {
     if (files.length === 0) {
@@ -97,9 +104,11 @@ function App() {
 
     setIsProcessing(true);
     setError('');
-    setProcessedData([]);
-    setAnalytics(null);
-    setSummary(null);
+    if (!appendMode) {
+      setProcessedData([]);
+      setAnalytics(null);
+      setSummary(null);
+    }
     initializeSteps(files.length);
 
     try {
@@ -159,22 +168,24 @@ function App() {
 
       // 步骤4: 合并数据
       updateStep('merge', 'processing');
+      // 增量模式：合并已有数据
+      const finalData = appendMode ? [...processedData, ...allProcessedData] : allProcessedData;
       // 按发布时间排序
-      allProcessedData.sort((a, b) => 
+      finalData.sort((a, b) => 
         new Date(b.发布时间).getTime() - new Date(a.发布时间).getTime()
       );
       
-      const summaryReport = DataExporter.generateSummaryReport(allProcessedData);
+      const summaryReport = DataExporter.generateSummaryReport(finalData);
       updateStep('merge', 'completed');
 
       // 步骤5: 完成
       updateStep('complete', 'completed');
-      setProcessedData(allProcessedData);
+      setProcessedData(finalData);
       setSummary(summaryReport);
       
       // 生成分析数据
       try {
-        const analyticsData = AnalyticsProcessor.generateAnalytics(allProcessedData);
+        const analyticsData = AnalyticsProcessor.generateAnalytics(finalData);
         console.log('分析数据生成成功:', analyticsData);
         setAnalytics(analyticsData);
       } catch (analyticsError) {
@@ -269,7 +280,21 @@ function App() {
             </div>
             
             {/* 操作按钮 - 最右侧 */}
-            <div className="flex items-center space-x-2 ml-8">
+            <div className="flex items-center space-x-3 ml-8">
+              {/* 主题切换 */}
+              <div className="flex items-center space-x-1.5">
+                {(Object.keys(THEMES) as Theme[]).map(t => (
+                  <button
+                    key={t}
+                    title={`${THEMES[t].label}色主题`}
+                    onClick={() => setTheme(t)}
+                    className={`w-5 h-5 rounded-full transition-all duration-200 ${
+                      theme === t ? 'ring-2 ring-offset-1 ring-gray-400 scale-125' : 'opacity-60 hover:opacity-100'
+                    }`}
+                    style={{ backgroundColor: THEMES[t].dot }}
+                  />
+                ))}
+              </div>
               {(processedData.length > 0 || error) && (
                 <button
                   onClick={resetAll}
@@ -447,6 +472,26 @@ function App() {
                   />
 
                   <div className="mt-6 space-y-3">
+                    {/* 增量导入开关 */}
+                    <div className="flex items-center justify-between px-1 py-2 bg-blue-50 rounded-lg">
+                      <div className="flex items-center space-x-2">
+                        <PlusCircle className="w-4 h-4 text-blue-600" />
+                        <span className="text-sm font-medium text-blue-800">增量导入</span>
+                      </div>
+                      <button
+                        onClick={() => setAppendMode(prev => !prev)}
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 focus:outline-none ${
+                          appendMode ? 'bg-blue-600' : 'bg-gray-300'
+                        }`}
+                      >
+                        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                          appendMode ? 'translate-x-4.5' : 'translate-x-0.5'
+                        }`} />
+                      </button>
+                    </div>
+                    {appendMode && (
+                      <p className="text-xs text-blue-600 px-1">新导入数据将追加到已有 {processedData.length} 条记录</p>
+                    )}
                     <button
                       onClick={processFiles}
                       disabled={files.length === 0 || isProcessing}

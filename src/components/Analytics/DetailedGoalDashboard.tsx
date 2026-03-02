@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Users, TrendingUp, Target, Award, Eye, Heart, MessageCircle, Share2, BookmarkPlus, Calendar, ChevronDown, ChevronUp, Edit3, Save, X, Plus, AlertTriangle } from 'lucide-react';
+import { FileText, Users, TrendingUp, Target, Award, Eye, Heart, MessageCircle, Share2, BookmarkPlus, Calendar, ChevronDown, ChevronUp, Edit3, Save, X, Plus, AlertTriangle, ClipboardList, Copy, Check } from 'lucide-react';
 import { PerformanceMetrics } from '../../types';
 import { AnalyticsProcessor } from '../../utils/analyticsProcessor';
 import GoalSummaryTable from './GoalSummaryTable';
@@ -61,6 +61,8 @@ const DetailedGoalDashboard: React.FC<DetailedGoalDashboardProps> = ({ metrics, 
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['content', 'fans', 'engagement']));
   const [editMode, setEditMode] = useState<boolean>(false);
   const [showAddMonthModal, setShowAddMonthModal] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewCopied, setReviewCopied] = useState(false);
   const [dynamicMonthlyGoals, setDynamicMonthlyGoals] = useState<MonthlyGoal[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -371,6 +373,15 @@ const DetailedGoalDashboard: React.FC<DetailedGoalDashboardProps> = ({ metrics, 
           </div>
           
           <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
+            {/* 复盘报告按钮 */}
+            <button
+              onClick={() => setShowReviewModal(true)}
+              className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-colors"
+            >
+              <ClipboardList className="w-4 h-4" />
+              <span>复盘报告</span>
+            </button>
+
             {/* 编辑模式切换 */}
             <div className="flex items-center space-x-2">
               <button
@@ -541,6 +552,83 @@ const DetailedGoalDashboard: React.FC<DetailedGoalDashboardProps> = ({ metrics, 
           engagementGoals: selectedMonth === '年度' ? yearlyGoals.engagementGoals : currentGoal.engagementGoals
         }}
       />
+
+      {/* 复盘报告 Modal */}
+      {showReviewModal && (() => {
+        const isYearly = selectedMonth === '年度';
+        const goalLabel = isYearly ? '年度目标' : `${selectedMonth}目标`;
+        const activeGoal = isYearly ? yearlyGoals : currentGoal;
+
+        const fmt = (n: number) => AnalyticsProcessor.formatNumber(n);
+        const pct = (cur: number, tgt: number) => tgt > 0 ? ((cur / tgt) * 100).toFixed(1) + '%' : 'N/A';
+        const diff = (cur: number, tgt: number) => {
+          const d = cur - tgt;
+          return (d >= 0 ? '+' : '') + fmt(d);
+        };
+
+        const lines = [
+          `【${goalLabel}复盘报告】 生成时间: ${new Date().toLocaleDateString('zh-CN')}`,
+          '',
+          '══ 内容创作 ══',
+          `视频总数    目标: ${fmt(activeGoal.contentGoals.totalVideos)}  实际: ${fmt(currentData.content.totalVideos)}  差异: ${diff(currentData.content.totalVideos, activeGoal.contentGoals.totalVideos)}  完成率: ${pct(currentData.content.totalVideos, activeGoal.contentGoals.totalVideos)}`,
+          `采访类视频  目标: ${fmt(activeGoal.contentGoals.interviewVideos)}  实际: ${fmt(currentData.content.interviewVideos)}  差异: ${diff(currentData.content.interviewVideos, activeGoal.contentGoals.interviewVideos)}  完成率: ${pct(currentData.content.interviewVideos, activeGoal.contentGoals.interviewVideos)}`,
+          `其他类视频  目标: ${fmt(activeGoal.contentGoals.otherVideos)}  实际: ${fmt(currentData.content.otherVideos)}  差异: ${diff(currentData.content.otherVideos, activeGoal.contentGoals.otherVideos)}  完成率: ${pct(currentData.content.otherVideos, activeGoal.contentGoals.otherVideos)}`,
+          '',
+          '══ 粉丝增长 ══',
+          `抖音粉丝    目标: ${fmt(activeGoal.fansGoals.douyin)}  实际: ${fmt(currentData.fans.douyin)}  差异: ${diff(currentData.fans.douyin, activeGoal.fansGoals.douyin)}  完成率: ${pct(currentData.fans.douyin, activeGoal.fansGoals.douyin)}`,
+          `视频号粉丝  目标: ${fmt(activeGoal.fansGoals.shipinhao)}  实际: ${fmt(currentData.fans.shipinhao)}  差异: ${diff(currentData.fans.shipinhao, activeGoal.fansGoals.shipinhao)}  完成率: ${pct(currentData.fans.shipinhao, activeGoal.fansGoals.shipinhao)}`,
+          `小红书粉丝  目标: ${fmt(activeGoal.fansGoals.xiaohongshu)}  实际: ${fmt(currentData.fans.xiaohongshu)}  差异: ${diff(currentData.fans.xiaohongshu, activeGoal.fansGoals.xiaohongshu)}  完成率: ${pct(currentData.fans.xiaohongshu, activeGoal.fansGoals.xiaohongshu)}`,
+          `粉丝总计    目标: ${fmt(activeGoal.fansGoals.total)}  实际: ${fmt(currentData.fans.total)}  差异: ${diff(currentData.fans.total, activeGoal.fansGoals.total)}  完成率: ${pct(currentData.fans.total, activeGoal.fansGoals.total)}`,
+          '',
+          '══ 播放与互动 ══',
+          `总播放量    目标: ${fmt(activeGoal.engagementGoals.totalViews)}  实际: ${fmt(currentData.engagement.totalViews)}  差异: ${diff(currentData.engagement.totalViews, activeGoal.engagementGoals.totalViews)}  完成率: ${pct(currentData.engagement.totalViews, activeGoal.engagementGoals.totalViews)}`,
+          `爆款视频    目标: ${fmt(activeGoal.engagementGoals.viralCount)}  实际: ${fmt(currentData.engagement.viralCount)}  差异: ${diff(currentData.engagement.viralCount, activeGoal.engagementGoals.viralCount)}  完成率: ${pct(currentData.engagement.viralCount, activeGoal.engagementGoals.viralCount)}`,
+          `总互动量    目标: ${fmt(activeGoal.engagementGoals.totalInteractions)}  实际: ${fmt(currentData.engagement.totalInteractions)}  差异: ${diff(currentData.engagement.totalInteractions, activeGoal.engagementGoals.totalInteractions)}  完成率: ${pct(currentData.engagement.totalInteractions, activeGoal.engagementGoals.totalInteractions)}`,
+          `完播率      目标: ${activeGoal.engagementGoals.completionRate}%  实际: ${currentData.engagement.completionRate.toFixed(1)}%  差异: ${(currentData.engagement.completionRate - activeGoal.engagementGoals.completionRate).toFixed(1)}%  完成率: ${pct(currentData.engagement.completionRate, activeGoal.engagementGoals.completionRate)}`,
+        ];
+        const reviewText = lines.join('\n');
+
+        const handleCopy = () => {
+          navigator.clipboard.writeText(reviewText).then(() => {
+            setReviewCopied(true);
+            setTimeout(() => setReviewCopied(false), 2000);
+          });
+        };
+
+        return (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl p-6 w-full max-w-2xl mx-4 max-h-[85vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-2">
+                  <ClipboardList className="w-5 h-5 text-blue-600" />
+                  <h3 className="text-lg font-semibold text-gray-900">{goalLabel}复盘报告</h3>
+                </div>
+                <button onClick={() => setShowReviewModal(false)} className="text-gray-400 hover:text-gray-600">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <pre className="text-sm text-gray-800 bg-gray-50 rounded-lg p-4 whitespace-pre-wrap font-mono leading-relaxed border border-gray-200">{reviewText}</pre>
+              <div className="flex justify-end mt-4 space-x-3">
+                <button
+                  onClick={() => setShowReviewModal(false)}
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                >
+                  关闭
+                </button>
+                <button
+                  onClick={handleCopy}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+                    reviewCopied ? 'bg-green-600 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'
+                  }`}
+                >
+                  {reviewCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  <span>{reviewCopied ? '已复制' : '复制内容'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* 添加月份目标 Modal */}
       {showAddMonthModal && (

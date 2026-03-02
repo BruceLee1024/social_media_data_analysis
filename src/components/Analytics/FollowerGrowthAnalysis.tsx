@@ -504,6 +504,93 @@ const FollowerGrowthAnalysis: React.FC<FollowerGrowthAnalysisProps> = ({ data })
           })}
         </div>
       </div>
+      {/* 粉效比分析 */}
+      <div className="relative bg-gradient-to-br from-white via-purple-50/30 to-pink-50/30 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-8 overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-400/10 to-pink-400/10 rounded-full blur-3xl"></div>
+        <div className="relative flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-3">
+            <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-md">
+              <Zap className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-gray-800">粉效比分析</h3>
+              <p className="text-sm text-gray-500">粉丝增量 / 播放量 × 1000，衡量内容吸粉转化效率</p>
+            </div>
+          </div>
+        </div>
+
+        {/* 平台粉效比柱图 */}
+        {(() => {
+          const fanEffData = platformGrowthSummary.map(p => {
+            const items = data.filter(d => d['来源平台'] === p.platform && (d['播放量'] || 0) > 0);
+            const totalViews = items.reduce((s, d) => s + (d['播放量'] || 0), 0);
+            const totalFans = items.reduce((s, d) => s + (d['粉丝增量'] || 0), 0);
+            const fanEff = totalViews > 0 ? (totalFans / totalViews) * 1000 : 0;
+            return { platform: p.platform, 粉效比: parseFloat(fanEff.toFixed(2)) };
+          }).filter(d => d['粉效比'] > 0);
+
+          if (fanEffData.length === 0) return (
+            <div className="text-center py-8 text-gray-400"><TrendingUp className="w-8 h-8 mx-auto mb-2" /><p>暂无粉帷增量数据</p></div>
+          );
+
+          return (
+            <div className="h-48">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={fanEffData} margin={{ top: 10, right: 20, left: 10, bottom: 5 }}>
+                  <defs>
+                    <linearGradient id="fanEffGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.9} />
+                      <stop offset="100%" stopColor="#ec4899" stopOpacity={0.7} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="platform" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <Tooltip formatter={(v: number) => [`${v.toFixed(2)}`, '粉效比(千播增粉)']} />
+                  <Bar dataKey="粉效比" fill="url(#fanEffGradient)" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          );
+        })()}
+
+        {/* Top 10 粉效比内容列表 */}
+        {(() => {
+          const topFanEff = data
+            .filter(d => (d['播放量'] || 0) > 0 && (d['粉丝增量'] || 0) > 0)
+            .map(d => ({
+              ...d,
+              _fanEff: ((d['粉丝增量'] || 0) / (d['播放量'] || 1)) * 1000,
+            }))
+            .sort((a, b) => b._fanEff - a._fanEff)
+            .slice(0, 10);
+
+          if (topFanEff.length === 0) return null;
+
+          return (
+            <div className="mt-6">
+              <h4 className="text-sm font-semibold text-gray-700 mb-3">🏆 Top 10 高粉效比内容</h4>
+              <div className="space-y-2">
+                {topFanEff.map((item, i) => (
+                  <div key={i} className="flex items-center justify-between p-3 bg-white/60 rounded-xl border border-white/30 hover:bg-white/80 transition-colors">
+                    <div className="flex items-center space-x-3 min-w-0">
+                      <span className={`flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold text-white ${
+                        i === 0 ? 'bg-yellow-400' : i === 1 ? 'bg-gray-400' : i === 2 ? 'bg-amber-600' : 'bg-gray-200 text-gray-600'
+                      }`}>{i + 1}</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 flex-shrink-0">{item['来源平台']}</span>
+                      <span className="text-sm text-gray-700 truncate">{item['标题描述'] || '无标题'}</span>
+                    </div>
+                    <div className="flex items-center space-x-4 flex-shrink-0 ml-3">
+                      <span className="text-xs text-gray-500">{(item['播放量'] || 0).toLocaleString()} 播放</span>
+                      <span className="text-sm font-bold text-purple-600">{item._fanEff.toFixed(2)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+      </div>
     </div>
   );
 };

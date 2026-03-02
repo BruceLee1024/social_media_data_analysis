@@ -1,8 +1,9 @@
 import React from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { ContentTypeMetrics, TopContentItem, UnifiedData } from '../../types';
 import { AnalyticsProcessor } from '../../utils/analyticsProcessor';
-import { Trophy, TrendingUp, Eye, Heart, PieChart as PieChartIcon, FileText, Activity, MessageCircle, Tag } from 'lucide-react';
+import { getTopNByScore } from '../../utils/contentScorer';
+import { Trophy, TrendingUp, Eye, Heart, PieChart as PieChartIcon, FileText, Activity, MessageCircle, Tag, Star, BarChart3 } from 'lucide-react';
 
 interface ContentAnalysisProps {
   contentTypes: ContentTypeMetrics[];
@@ -732,6 +733,126 @@ const ContentAnalysis: React.FC<ContentAnalysisProps> = ({ contentTypes, topCont
                   </span>
                 </div>
               ))}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* 标题特征分析 */}
+      {rawData && rawData.length > 0 && (() => {
+        const buckets: Record<string, { views: number[]; engRates: number[] }> = {
+          '<10字': { views: [], engRates: [] },
+          '10-20字': { views: [], engRates: [] },
+          '20-30字': { views: [], engRates: [] },
+          '>30字': { views: [], engRates: [] },
+        };
+        rawData.forEach(item => {
+          const len = (item['标题描述'] || '').length;
+          const views = item['播放量'] || 0;
+          const eng = (item['点赞量'] || 0) + (item['评论量'] || 0) + (item['收藏量'] || 0) + (item['分享量'] || 0);
+          const engRate = views > 0 ? (eng / views) * 100 : 0;
+          const key = len < 10 ? '<10字' : len < 20 ? '10-20字' : len < 30 ? '20-30字' : '>30字';
+          buckets[key].views.push(views);
+          buckets[key].engRates.push(engRate);
+        });
+        const bucketData = Object.entries(buckets).map(([label, d]) => ({
+          label,
+          avg播放: d.views.length ? Math.round(d.views.reduce((s, v) => s + v, 0) / d.views.length) : 0,
+          avg互动率: d.engRates.length ? parseFloat((d.engRates.reduce((s, v) => s + v, 0) / d.engRates.length).toFixed(2)) : 0,
+          count: d.views.length,
+        }));
+        const hasData = bucketData.some(b => b.count > 0);
+        if (!hasData) return null;
+        return (
+          <div className="relative bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/50 p-8 shadow-xl overflow-hidden">
+            <div className="absolute top-0 right-0 w-28 h-28 bg-gradient-to-br from-amber-100/50 to-orange-100/50 rounded-full -translate-y-14 translate-x-14"></div>
+            <div className="relative mb-6">
+              <div className="flex items-center">
+                <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center mr-4">
+                  <BarChart3 className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold bg-gradient-to-r from-gray-800 to-amber-700 bg-clip-text text-transparent">标题特征分析</h3>
+                  <p className="text-sm text-gray-600 mt-1">按标题字数分组，比较平均播放量与互动率</p>
+                </div>
+              </div>
+            </div>
+            <div className="h-56">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={bucketData} margin={{ top: 10, right: 20, left: 10, bottom: 5 }}>
+                  <defs>
+                    <linearGradient id="titleViewGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.9} />
+                      <stop offset="100%" stopColor="#d97706" stopOpacity={0.7} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+                  <YAxis yAxisId="left" tick={{ fontSize: 11 }} />
+                  <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} tickFormatter={v => `${v}%`} />
+                  <Tooltip
+                    formatter={(v: number, name: string) => [
+                      name === 'avg互动率' ? `${v}%` : v.toLocaleString(),
+                      name === 'avg互动率' ? '平均互动率' : '平均播放量',
+                    ]}
+                  />
+                  <Bar yAxisId="left" dataKey="avg播放" fill="url(#titleViewGrad)" name="avg播放" radius={[4, 4, 0, 0]} />
+                  <Bar yAxisId="right" dataKey="avg互动率" fill="#3b82f6" fillOpacity={0.7} name="avg互动率" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-3">
+              {bucketData.map(b => (
+                <div key={b.label} className="flex items-center space-x-2 text-xs text-gray-500">
+                  <span className="font-semibold text-gray-700">{b.label}</span>
+                  <span>{b.count}条内容</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* 内容评分榜Top10 */}
+      {rawData && rawData.length > 0 && (() => {
+        const scored = getTopNByScore(rawData, 10);
+        if (scored.length === 0) return null;
+        return (
+          <div className="relative bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/50 p-8 shadow-xl overflow-hidden">
+            <div className="absolute top-0 right-0 w-28 h-28 bg-gradient-to-br from-yellow-100/50 to-amber-100/50 rounded-full -translate-y-14 translate-x-14"></div>
+            <div className="relative mb-6">
+              <div className="flex items-center">
+                <div className="w-10 h-10 bg-gradient-to-br from-yellow-500 to-amber-600 rounded-xl flex items-center justify-center mr-4">
+                  <Star className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold bg-gradient-to-r from-gray-800 to-yellow-700 bg-clip-text text-transparent">内容评分榜 Top 10</h3>
+                  <p className="text-sm text-gray-600 mt-1">综合播放量、互动率、完播率、粉效比评分排名</p>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-3">
+              {scored.map((item, i) => {
+                const score = Math.round(item.score);
+                const scoreColor = score >= 70 ? 'text-green-600 bg-green-50' : score >= 40 ? 'text-yellow-600 bg-yellow-50' : 'text-gray-500 bg-gray-50';
+                return (
+                  <div key={i} className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50/80 to-yellow-50/30 rounded-xl border border-gray-100 hover:shadow-md transition-all">
+                    <div className="flex items-center space-x-3 min-w-0">
+                      <span className={`flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-xs font-bold text-white ${
+                        i === 0 ? 'bg-yellow-400' : i === 1 ? 'bg-gray-400' : i === 2 ? 'bg-amber-600' : 'bg-gray-200 text-gray-600'
+                      }`}>{i + 1}</span>
+                      <span className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full ${getPlatformBadgeColor(item['来源平台'])}`}>
+                        {item['来源平台']}
+                      </span>
+                      <span className="text-sm text-gray-800 truncate">{item['标题描述'] || '无标题'}</span>
+                    </div>
+                    <div className="flex items-center space-x-4 flex-shrink-0 ml-3">
+                      <span className="text-xs text-gray-400">{(item['播放量'] || 0).toLocaleString()}播放</span>
+                      <span className={`text-sm font-bold px-2 py-1 rounded-lg ${scoreColor}`}>{score}分</span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         );

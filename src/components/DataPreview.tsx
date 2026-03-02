@@ -1,7 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { UnifiedData, PlatformStat, TotalStats } from '../types';
-import { Eye, Download, BarChart3, UserPlus, Search, ChevronUp, ChevronDown, ChevronsUpDown, Flame, TrendingDown as TrendDown } from 'lucide-react';
+import { Eye, Download, BarChart3, UserPlus, Search, ChevronUp, ChevronDown, ChevronsUpDown, Flame, TrendingDown as TrendDown, SlidersHorizontal, Star, ChevronDown as Caret, X as ClearIcon } from 'lucide-react';
 import { normalizeCompletionRate, formatCompletionRate, supportCompletionRate } from '../utils/completionRateUtils';
+import { scoreContents } from '../utils/contentScorer';
+import { DataExporter } from '../utils/exporter';
 
 interface DataPreviewProps {
   data: UnifiedData[];
@@ -9,7 +11,7 @@ interface DataPreviewProps {
   summary: any;
 }
 
-type SortField = '播放量' | '点赞量' | '评论量' | null;
+type SortField = '播放量' | '点赞量' | '评论量' | '评分' | null;
 
 const DataPreview: React.FC<DataPreviewProps> = ({ data, onExport, summary }) => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -19,7 +21,31 @@ const DataPreview: React.FC<DataPreviewProps> = ({ data, onExport, summary }) =>
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const itemsPerPage = 10;
 
+  // 高级筛选状态
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [advDateFrom, setAdvDateFrom] = useState('');
+  const [advDateTo, setAdvDateTo] = useState('');
+  const [advMinViews, setAdvMinViews] = useState('');
+  const [advMaxViews, setAdvMaxViews] = useState('');
+  const [onlyViral, setOnlyViral] = useState(false);
+  const [onlyLow, setOnlyLow] = useState(false);
+
+  // 导出下拉
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const exportRef = useRef<HTMLDivElement>(null);
+
+  const hasAdvFilter = !!(advDateFrom || advDateTo || advMinViews || advMaxViews || onlyViral || onlyLow);
+  const resetAdv = () => { setAdvDateFrom(''); setAdvDateTo(''); setAdvMinViews(''); setAdvMaxViews(''); setOnlyViral(false); setOnlyLow(false); };
+
   const allPlatforms = useMemo(() => Array.from(new Set(data.map(r => r.来源平台))).sort(), [data]);
+
+  // 评分计算
+  const scoredMap = useMemo(() => {
+    const scored = scoreContents(data);
+    const m = new Map<UnifiedData, number>();
+    scored.forEach(s => m.set(s.data, s.score));
+    return m;
+  }, [data]);
 
   const filteredAndSortedData = useMemo(() => {
     let result = data;
@@ -28,23 +54,36 @@ const DataPreview: React.FC<DataPreviewProps> = ({ data, onExport, summary }) =>
       const q = searchQuery.trim().toLowerCase();
       result = result.filter(r => r.标题描述?.toLowerCase().includes(q));
     }
+    // 高级筛选
+    if (advDateFrom) result = result.filter(r => (r.发布时间?.slice(0,10) || '') >= advDateFrom);
+    if (advDateTo) result = result.filter(r => (r.发布时间?.slice(0,10) || '') <= advDateTo);
+    const minV = advMinViews ? Number(advMinViews) : 0;
+    const maxV = advMaxViews ? Number(advMaxViews) : Infinity;
+    if (advMinViews || advMaxViews) result = result.filter(r => { const v = r.播放量||0; return v >= minV && v <= maxV; });
+    if (onlyViral) result = result.filter(r => (r.播放量||0) > anomalyInfo.viralThreshold);
+    if (onlyLow) result = result.filter(r => { const v = r.播放量||0; return v > 0 && v < anomalyInfo.lowThreshold; });
+
     if (sortField) {
       result = [...result].sort((a, b) => {
-        const av = (a[sortField as keyof UnifiedData] as number) || 0;
-        const bv = (b[sortField as keyof UnifiedData] as number) || 0;
+        const av = sortField === '评分'
+          ? (scoredMap.get(a) ?? 0)
+          : ((a[sortField as keyof UnifiedData] as number) || 0);
+        const bv = sortField === '评分'
+          ? (scoredMap.get(b) ?? 0)
+          : ((b[sortField as keyof UnifiedData] as number) || 0);
         return sortDir === 'desc' ? bv - av : av - bv;
       });
     }
     return result;
-  }, [data, platformFilter, searchQuery, sortField, sortDir]);
+  }, [data, platformFilter, searchQuery, sortField, sortDir, advDateFrom, advDateTo, advMinViews, advMaxViews, onlyViral, onlyLow, anomalyInfo, scoredMap]);
 
-  const handleSort = (field: '播放量' | '点赞量' | '评论量') => {
+  const handleSort = (field: '播放量' | '点赞量' | '评论量' | '评分') => {
     if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
     else { setSortField(field); setSortDir('desc'); }
     setCurrentPage(1);
   };
 
-  const SortIcon = ({ field }: { field: '播放量' | '点赞量' | '评论量' }) => {
+  const SortIcon = ({ field }: { field: '播放量' | '点赞量' | '评论量' | '评分' }) => {
     if (sortField !== field) return <ChevronsUpDown className="w-3 h-3 ml-1 text-gray-400" />;
     return sortDir === 'desc'
       ? <ChevronDown className="w-3 h-3 ml-1 text-blue-500" />
@@ -327,16 +366,80 @@ const DataPreview: React.FC<DataPreviewProps> = ({ data, onExport, summary }) =>
                   : `共 ${data.length} 条`}
               </span>
             </h3>
-            <button
-              onClick={onExport}
-              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors cursor-pointer"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              导出Excel
-            </button>
+            <div className="flex items-center gap-2">
+              {/* 高级筛选按钮 */}
+              <button
+                onClick={() => setShowAdvanced(v => !v)}
+                className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg border transition-colors ${
+                  showAdvanced || hasAdvFilter ? 'bg-amber-50 border-amber-300 text-amber-700' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                <SlidersHorizontal className="w-4 h-4 mr-1.5" />
+                高级筛选{hasAdvFilter && <span className="ml-1 w-2 h-2 bg-amber-500 rounded-full" />}
+              </button>
+              {/* 导出下拉 */}
+              <div ref={exportRef} className="relative">
+                <button
+                  onClick={() => setShowExportMenu(v => !v)}
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Download className="w-4 h-4 mr-1.5" />
+                  导出<Caret className="w-3 h-3 ml-1" />
+                </button>
+                {showExportMenu && (
+                  <div className="absolute right-0 top-full mt-1 w-40 bg-white border border-gray-200 rounded-xl shadow-xl z-30 overflow-hidden">
+                    {[
+                      { label: '全部数据', action: () => { onExport(); setShowExportMenu(false); } },
+                      { label: '当前筛选结果', action: () => { DataExporter.exportToExcel(filteredAndSortedData, `筛选数据_${Date.now()}.xlsx`); setShowExportMenu(false); } },
+                      { label: 'Top 20（按评分）', action: () => { const top = [...data].sort((a,b)=>(scoredMap.get(b)??0)-(scoredMap.get(a)??0)).slice(0,20); DataExporter.exportToExcel(top, `Top20评分_${Date.now()}.xlsx`); setShowExportMenu(false); } },
+                    ].map(item => (
+                      <button key={item.label} onClick={item.action} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
+          {/* 高级筛选面板 */}
+          {showAdvanced && (
+            <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-2">
+              <div className="flex flex-wrap gap-3 items-end">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">发布日期从</label>
+                  <input type="date" value={advDateFrom} onChange={e => { setAdvDateFrom(e.target.value); setCurrentPage(1); }} className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">至</label>
+                  <input type="date" value={advDateTo} onChange={e => { setAdvDateTo(e.target.value); setCurrentPage(1); }} className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">播放量 ≥</label>
+                  <input type="number" min="0" placeholder="不限" value={advMinViews} onChange={e => { setAdvMinViews(e.target.value); setCurrentPage(1); }} className="w-28 text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">播放量 ≤</label>
+                  <input type="number" min="0" placeholder="不限" value={advMaxViews} onChange={e => { setAdvMaxViews(e.target.value); setCurrentPage(1); }} className="w-28 text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white" />
+                </div>
+                <label className="flex items-center gap-1.5 cursor-pointer text-xs text-gray-700">
+                  <input type="checkbox" checked={onlyViral} onChange={e => { setOnlyViral(e.target.checked); if(e.target.checked) setOnlyLow(false); setCurrentPage(1); }} />
+                  <Flame className="w-3.5 h-3.5 text-orange-500" />仅爆款
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer text-xs text-gray-700">
+                  <input type="checkbox" checked={onlyLow} onChange={e => { setOnlyLow(e.target.checked); if(e.target.checked) setOnlyViral(false); setCurrentPage(1); }} />
+                  <TrendDown className="w-3.5 h-3.5 text-gray-400" />仅低效
+                </label>
+                {hasAdvFilter && (
+                  <button onClick={() => { resetAdv(); setCurrentPage(1); }} className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700">
+                    <ClearIcon className="w-3.5 h-3.5" />清除筛选
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
           {/* 搜索 + 平台筛选 */}
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3 mt-3">
             <div className="relative flex-1 min-w-48">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
@@ -418,6 +521,12 @@ const DataPreview: React.FC<DataPreviewProps> = ({ data, onExport, summary }) =>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   涨粉数
                 </th>
+                <th
+                  className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-amber-600 select-none"
+                  onClick={() => handleSort('评分')}
+                >
+                  <span className="inline-flex items-center justify-end"><Star className="w-3 h-3 mr-0.5" />评分<SortIcon field="评分" /></span>
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -476,6 +585,13 @@ const DataPreview: React.FC<DataPreviewProps> = ({ data, onExport, summary }) =>
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm font-bold text-emerald-600 text-right">
                     {formatNumber(row.粉丝增量)}
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap text-right">
+                    {(() => {
+                      const sc = scoredMap.get(row) ?? 0;
+                      const color = sc >= 70 ? 'text-green-600' : sc >= 40 ? 'text-amber-600' : 'text-gray-400';
+                      return <span className={`text-sm font-bold ${color}`}>{sc}</span>;
+                    })()}
                   </td>
                 </tr>
                 );

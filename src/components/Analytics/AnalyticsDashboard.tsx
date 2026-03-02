@@ -1,5 +1,5 @@
-import React, { useState, useRef, useCallback } from 'react';
-import { BarChart3, TrendingUp, FileText, Award, ChartBar, Users, Activity, Save, Layers, FileDown, ClipboardList, X, Copy, Check } from 'lucide-react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
+import { BarChart3, TrendingUp, FileText, Award, ChartBar, Users, Activity, Save, Layers, FileDown, ClipboardList, X, Copy, Check, CalendarDays, Filter, RotateCcw } from 'lucide-react';
 import { AnalyticsData, UnifiedData } from '../../types';
 import OverviewCards from './OverviewCards';
 import PlatformComparison from './PlatformComparison';
@@ -10,6 +10,7 @@ import FollowerGrowthAnalysis from './FollowerGrowthAnalysis';
 import ContentPerformanceHeatmap from './ContentPerformanceHeatmap';
 import CrossPlatformAnalysis from './CrossPlatformAnalysis';
 import InsightCards from './InsightCards';
+import ContentCalendar from './ContentCalendar';
 import { SnapshotManager } from '../../utils/snapshotManager';
 
 interface AnalyticsDashboardProps {
@@ -20,7 +21,7 @@ interface AnalyticsDashboardProps {
 }
 
 const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ analytics, summary, rawData, goalData }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'platform' | 'trend' | 'content' | 'engagement' | 'followers' | 'heatmap' | 'crossplatform'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'platform' | 'trend' | 'content' | 'engagement' | 'followers' | 'heatmap' | 'crossplatform' | 'calendar'>('overview');
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [showWeeklyReport, setShowWeeklyReport] = useState(false);
@@ -28,6 +29,33 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ analytics, summ
   const [reportCopied, setReportCopied] = useState(false);
   const [pdfExporting, setPdfExporting] = useState(false);
   const dashboardContentRef = useRef<HTMLDivElement>(null);
+
+  // 全局日期范围
+  const rawDateRange = useMemo(() => {
+    if (!rawData || rawData.length === 0) return { min: '', max: '' };
+    const dates = rawData.map(d => d.发布时间?.slice(0, 10)).filter(Boolean).sort();
+    return { min: dates[0] || '', max: dates[dates.length - 1] || '' };
+  }, [rawData]);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  // 当 rawData 变化时同步重置日期范围
+  const [lastRawKey, setLastRawKey] = useState(0);
+  useMemo(() => {
+    if (rawDateRange.min) { setDateFrom(rawDateRange.min); setDateTo(rawDateRange.max); setLastRawKey(k => k + 1); }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rawDateRange.min, rawDateRange.max]);
+  const _ = lastRawKey; // suppress unused warning
+
+  const filteredRawData = useMemo(() => {
+    if (!rawData) return rawData;
+    const from = dateFrom || rawDateRange.min;
+    const to = dateTo || rawDateRange.max;
+    if (!from && !to) return rawData;
+    return rawData.filter(d => {
+      const ds = d.发布时间?.slice(0, 10) || '';
+      return ds >= from && ds <= to;
+    });
+  }, [rawData, dateFrom, dateTo, rawDateRange]);
 
   const handleSaveSnapshot = async (name: string, description?: string) => {
     console.log('AnalyticsDashboard - Saving snapshot with goalData:', goalData);
@@ -181,16 +209,18 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ analytics, summ
     { id: 'followers', name: '粉丝增长', icon: Users },
     { id: 'heatmap', name: '时间热力图', icon: ChartBar },
     { id: 'crossplatform', name: '跨平台对比', icon: Layers },
+    { id: 'calendar', name: '发布日历', icon: CalendarDays },
   ];
 
   const renderContent = () => {
+    const fd = filteredRawData;
+    const noData = <div className="p-8 text-center text-gray-500">需要原始数据来显示此分析</div>;
     switch (activeTab) {
       case 'overview':
-        // 如果有summary数据，传递给OverviewCards
         if (summary) {
           return (
             <>
-              <InsightCards analytics={analytics} rawData={rawData} />
+              <InsightCards analytics={analytics} rawData={fd} />
               <OverviewCards
                 metrics={analytics.performanceMetrics}
                 totalDataCount={summary.总数据量}
@@ -207,31 +237,26 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ analytics, summ
         }
         return (
           <>
-            <InsightCards analytics={analytics} rawData={rawData} />
+            <InsightCards analytics={analytics} rawData={fd} />
             <OverviewCards metrics={analytics.performanceMetrics} />
           </>  
         );
-
       case 'platform':
         return <PlatformComparison data={analytics.platformComparison} />;
       case 'trend':
-        return <TrendAnalysis data={analytics.timeSeriesData} rawData={rawData} />;
+        return <TrendAnalysis data={analytics.timeSeriesData} rawData={fd} />;
       case 'content':
-        return (
-          <ContentAnalysis 
-            contentTypes={analytics.contentTypeAnalysis}
-            topContent={analytics.topContent}
-            rawData={rawData}
-          />
-        );
+        return <ContentAnalysis contentTypes={analytics.contentTypeAnalysis} topContent={analytics.topContent} rawData={fd} />;
       case 'engagement':
-        return rawData ? <EngagementAnalysis data={rawData} /> : <div className="p-8 text-center text-gray-500">需要原始数据来显示互动分析</div>;
+        return fd ? <EngagementAnalysis data={fd} /> : noData;
       case 'followers':
-        return rawData ? <FollowerGrowthAnalysis data={rawData} /> : <div className="p-8 text-center text-gray-500">需要原始数据来显示粉丝增长分析</div>;
+        return fd ? <FollowerGrowthAnalysis data={fd} /> : noData;
       case 'heatmap':
-        return rawData ? <ContentPerformanceHeatmap data={rawData} /> : <div className="p-8 text-center text-gray-500">需要原始数据来显示时间热力图</div>;
+        return fd ? <ContentPerformanceHeatmap data={fd} /> : noData;
       case 'crossplatform':
-        return rawData ? <CrossPlatformAnalysis data={rawData} /> : <div className="p-8 text-center text-gray-500">需要原始数据来显示跨平台对比</div>;
+        return fd ? <CrossPlatformAnalysis data={fd} /> : noData;
+      case 'calendar':
+        return fd ? <ContentCalendar data={fd} /> : noData;
       default:
         return <OverviewCards metrics={analytics.performanceMetrics} />;
     }
@@ -240,6 +265,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ analytics, summ
   return (
     <div className="space-y-6 overflow-visible">
       {/* Header with Save Button */}
+      <div className="flex flex-col gap-3">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-900">数据分析</h2>
         <div className="flex items-center space-x-3">
@@ -291,6 +317,46 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ analytics, summ
             保存快照
           </button>
         </div>
+      </div>
+
+      {/* 全局日期范围筛选 */}
+      {rawData && rawData.length > 0 && (
+        <div className="flex items-center gap-3 bg-blue-50 border border-blue-100 rounded-xl px-4 py-2.5">
+          <Filter className="w-4 h-4 text-blue-500 shrink-0" />
+          <span className="text-sm font-medium text-blue-700 shrink-0">全局筛选：</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <input
+              type="date"
+              value={dateFrom}
+              min={rawDateRange.min}
+              max={dateTo || rawDateRange.max}
+              onChange={e => setDateFrom(e.target.value)}
+              className="text-sm border border-blue-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 focus:ring-2 focus:ring-blue-400 focus:outline-none"
+            />
+            <span className="text-gray-400 text-sm">至</span>
+            <input
+              type="date"
+              value={dateTo}
+              min={dateFrom || rawDateRange.min}
+              max={rawDateRange.max}
+              onChange={e => setDateTo(e.target.value)}
+              className="text-sm border border-blue-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 focus:ring-2 focus:ring-blue-400 focus:outline-none"
+            />
+            <span className="text-xs text-blue-500 bg-blue-100 px-2 py-1 rounded-full">
+              {filteredRawData?.length ?? 0} / {rawData.length} 条
+            </span>
+            {(dateFrom !== rawDateRange.min || dateTo !== rawDateRange.max) && (
+              <button
+                onClick={() => { setDateFrom(rawDateRange.min); setDateTo(rawDateRange.max); }}
+                className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 transition-colors"
+              >
+                <RotateCcw className="w-3 h-3" />
+                重置
+              </button>
+            )}
+          </div>
+        </div>
+      )}
       </div>
 
       {/* Tab Navigation */}
