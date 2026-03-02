@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/social_media_data_analysis/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Multiplatform Social Media Data Integrator</title>
+    <style>
+      #loading {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 18px;
+        z-index: 9999;
+      }
+    </style>
+    <script type="module" crossorigin src="/social_media_data_analysis/assets/index-BoXJykpp.js"></script>
+    <link rel="stylesheet" crossorigin href="/social_media_data_analysis/assets/index-wCt3rU8O.css">
+  </head>
+  <body>
+    <div id="loading">正在加载应用...</div>
+    <div id="root"></div>
+    <script>
+      // 应用加载成功后隐藏加载提示
+      var observer = new MutationObserver(function(mutations) {
+        if (document.getElementById('root').children.length > 0) {
+          document.getElementById('loading').style.display = 'none';
+          observer.disconnect();
+        }
+      });
+      observer.observe(document.getElementById('root'), { childList: true, subtree: true });
+    </script>
+  </body>
+</html>
