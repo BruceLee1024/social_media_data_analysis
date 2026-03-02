@@ -134,6 +134,20 @@ export interface TopContentItem {
   engagementTotal: number;
 }
 
+// 跨平台内容关联组
+export interface ContentGroup {
+  id: string;
+  title: string;
+  publishDate: string;
+  platforms: Record<string, UnifiedData>;
+  platformCount: number;
+  totalViews: number;
+  totalLikes: number;
+  totalComments: number;
+  totalShares: number;
+  totalBookmarks: number;
+}
+
 // 添加总统计数据接口
 export interface TotalStats {
   totalCount: number;

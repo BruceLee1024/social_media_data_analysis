@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BarChart3, TrendingUp, FileText, Award, ChartBar, Users, Activity, Save } from 'lucide-react';
+import { BarChart3, TrendingUp, FileText, Award, ChartBar, Users, Activity, Save, Layers } from 'lucide-react';
 import { AnalyticsData, UnifiedData } from '../../types';
 import OverviewCards from './OverviewCards';
 import PlatformComparison from './PlatformComparison';
@@ -8,6 +8,7 @@ import ContentAnalysis from './ContentAnalysis';
 import EngagementAnalysis from './EngagementAnalysis';
 import FollowerGrowthAnalysis from './FollowerGrowthAnalysis';
 import ContentPerformanceHeatmap from './ContentPerformanceHeatmap';
+import CrossPlatformAnalysis from './CrossPlatformAnalysis';
 import { SnapshotManager } from '../../utils/snapshotManager';
 
 interface AnalyticsDashboardProps {
@@ -18,7 +19,7 @@ interface AnalyticsDashboardProps {
 }
 
 const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ analytics, summary, rawData, goalData }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'platform' | 'trend' | 'content' | 'engagement' | 'followers' | 'heatmap'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'platform' | 'trend' | 'content' | 'engagement' | 'followers' | 'heatmap' | 'crossplatform'>('overview');
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
 
@@ -91,6 +92,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ analytics, summ
     { id: 'engagement', name: '互动分析', icon: Activity },
     { id: 'followers', name: '粉丝增长', icon: Users },
     { id: 'heatmap', name: '时间热力图', icon: ChartBar },
+    { id: 'crossplatform', name: '跨平台对比', icon: Layers },
   ];
 
   const renderContent = () => {
@@ -132,6 +134,8 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ analytics, summ
         return rawData ? <FollowerGrowthAnalysis data={rawData} /> : <div className="p-8 text-center text-gray-500">需要原始数据来显示粉丝增长分析</div>;
       case 'heatmap':
         return rawData ? <ContentPerformanceHeatmap data={rawData} /> : <div className="p-8 text-center text-gray-500">需要原始数据来显示时间热力图</div>;
+      case 'crossplatform':
+        return rawData ? <CrossPlatformAnalysis data={rawData} /> : <div className="p-8 text-center text-gray-500">需要原始数据来显示跨平台对比</div>;
       default:
         return <OverviewCards metrics={analytics.performanceMetrics} />;
     }
