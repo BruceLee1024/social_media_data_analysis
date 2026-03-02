@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { Database, RefreshCcw, CheckCircle, AlertCircle, BarChart3, FileText, Target, Save, ShieldCheck, PlusCircle } from 'lucide-react';
+import { Database, RefreshCcw, CheckCircle, AlertCircle, BarChart3, FileText, Target, Save, ShieldCheck, PlusCircle, X } from 'lucide-react';
 import { useTheme, THEMES, Theme } from './utils/themeContext';
 import FileUpload from './components/FileUpload';
 import ProcessingProgress from './components/ProcessingProgress';
@@ -242,6 +242,18 @@ function App() {
     { id: 'snapshots', name: '快照管理', icon: Save },
   ];
 
+  // 主题色映射（完整 Tailwind class 字符串，避免 JIT 裁剪）
+  const navActiveClass: Record<string, string> = {
+    blue:   'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg',
+    green:  'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg',
+    purple: 'bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-lg',
+  };
+  const btnPrimaryClass: Record<string, string> = {
+    blue:   'bg-blue-600 hover:bg-blue-700',
+    green:  'bg-emerald-600 hover:bg-emerald-700',
+    purple: 'bg-violet-600 hover:bg-violet-700',
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
       {/* 顶部导航栏 */}
@@ -268,7 +280,7 @@ function App() {
                     onClick={() => setActiveView(item.id as any)}
                     className={`flex items-center justify-center px-6 py-3 text-sm font-medium rounded-xl transition-all duration-200 flex-1 mx-1 ${
                       activeView === item.id
-                        ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
+                        ? (navActiveClass[theme] ?? navActiveClass.blue)
                         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
                     }`}
                   >
@@ -492,58 +504,40 @@ function App() {
                     {appendMode && (
                       <p className="text-xs text-blue-600 px-1">新导入数据将追加到已有 {processedData.length} 条记录</p>
                     )}
-                    <button
-                      onClick={processFiles}
-                      disabled={files.length === 0 || isProcessing}
-                      className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
-                    >
-                      {isProcessing ? (
-                        <>
-                          <RefreshCcw className="w-4 h-4 mr-2 animate-spin" />
-                          处理中...
-                        </>
-                      ) : (
-                        <>
-                          <Database className="w-4 h-4 mr-2" />
-                          开始处理
-                        </>
+                    {/* 开始处理 + 清空文件（合并一行，去除重复按钮） */}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={processFiles}
+                        disabled={files.length === 0 || isProcessing}
+                        className={`flex-1 text-white py-3 px-4 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center ${btnPrimaryClass[theme] ?? btnPrimaryClass.blue}`}
+                      >
+                        {isProcessing ? (
+                          <>
+                            <RefreshCcw className="w-4 h-4 mr-2 animate-spin" />
+                            处理中...
+                          </>
+                        ) : (
+                          <>
+                            <Database className="w-4 h-4 mr-2" />
+                            开始处理
+                          </>
+                        )}
+                      </button>
+                      {files.length > 0 && (
+                        <button
+                          onClick={() => setFiles([])}
+                          disabled={isProcessing}
+                          title="清空已选文件"
+                          className="px-3 py-3 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg border border-gray-200 transition-colors disabled:opacity-50"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
                       )}
-                    </button>
+                    </div>
 
                     {/* 数据处理进度 */}
                     {steps.length > 0 && (
                       <ProcessingProgress steps={steps} currentStep={currentStep} />
-                    )}
-
-                    {/* 文件操作按钮 */}
-                    {files.length > 0 && (
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={processFiles}
-                          disabled={files.length === 0 || isProcessing}
-                          className="flex-1 bg-blue-600 text-white py-2 px-3 text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
-                        >
-                          {isProcessing ? (
-                            <>
-                              <RefreshCcw className="w-4 h-4 mr-2 animate-spin" />
-                              处理中...
-                            </>
-                          ) : (
-                            <>
-                              <Database className="w-4 h-4 mr-2" />
-                              开始处理
-                            </>
-                          )}
-                        </button>
-                        
-                        <button
-                          onClick={() => setFiles([])}
-                          disabled={isProcessing}
-                          className="px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
-                        >
-                          清空文件
-                        </button>
-                      </div>
                     )}
                   </div>
 

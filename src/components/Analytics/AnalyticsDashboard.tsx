@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { BarChart3, TrendingUp, FileText, Award, ChartBar, Users, Activity, Save, Layers, FileDown, ClipboardList, X, Copy, Check, CalendarDays, Filter, RotateCcw } from 'lucide-react';
 import { AnalyticsData, UnifiedData } from '../../types';
 import OverviewCards from './OverviewCards';
@@ -39,12 +39,12 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ analytics, summ
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   // 当 rawData 变化时同步重置日期范围
-  const [lastRawKey, setLastRawKey] = useState(0);
-  useMemo(() => {
-    if (rawDateRange.min) { setDateFrom(rawDateRange.min); setDateTo(rawDateRange.max); setLastRawKey(k => k + 1); }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (rawDateRange.min) {
+      setDateFrom(rawDateRange.min);
+      setDateTo(rawDateRange.max);
+    }
   }, [rawDateRange.min, rawDateRange.max]);
-  const _ = lastRawKey; // suppress unused warning
 
   const filteredRawData = useMemo(() => {
     if (!rawData) return rawData;
@@ -263,126 +263,120 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ analytics, summ
   };
 
   return (
-    <div className="space-y-6 overflow-visible">
-      {/* Header with Save Button */}
-      <div className="flex flex-col gap-3">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900">数据分析</h2>
-        <div className="flex items-center space-x-3">
-          {/* 生成周报按钮 */}
-          <button
-            onClick={() => { setReportText(generateWeeklyReport()); setShowWeeklyReport(true); }}
-            disabled={!rawData || rawData.length === 0}
-            className="flex items-center px-3 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-          >
-            <ClipboardList className="w-4 h-4 mr-1.5" />
-            生成周报
-          </button>
-          {/* 导出PDF按钮 */}
-          <button
-            onClick={handleExportPDF}
-            disabled={pdfExporting || !rawData || rawData.length === 0}
-            className="flex items-center px-3 py-2 bg-rose-600 text-white text-sm rounded-lg hover:bg-rose-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-          >
-            <FileDown className="w-4 h-4 mr-1.5" />
-            {pdfExporting ? '导出中...' : '导出PDF'}
-          </button>
-          {/* Save Status Indicator */}
-          {saveStatus === 'saving' && (
-            <div className="flex items-center text-blue-600">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
-              <span className="text-sm">保存中...</span>
-            </div>
-          )}
-          {saveStatus === 'success' && (
-            <div className="flex items-center text-green-600">
-              <Save className="w-4 h-4 mr-2" />
-              <span className="text-sm">保存成功</span>
-            </div>
-          )}
-          {saveStatus === 'error' && (
-            <div className="flex items-center text-red-600">
-              <Save className="w-4 h-4 mr-2" />
-              <span className="text-sm">保存失败</span>
-            </div>
-          )}
-          
-          {/* Save Snapshot Button */}
-          <button
-            onClick={() => setShowSaveModal(true)}
-            disabled={!rawData || rawData.length === 0 || saveStatus === 'saving'}
-            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-          >
-            <Save className="w-4 h-4 mr-2" />
-            保存快照
-          </button>
-        </div>
-      </div>
-
-      {/* 全局日期范围筛选 */}
-      {rawData && rawData.length > 0 && (
-        <div className="flex items-center gap-3 bg-blue-50 border border-blue-100 rounded-xl px-4 py-2.5">
-          <Filter className="w-4 h-4 text-blue-500 shrink-0" />
-          <span className="text-sm font-medium text-blue-700 shrink-0">全局筛选：</span>
+    <div className="space-y-4 overflow-visible">
+      {/* 粘性顶部面板：标题 + 操作 + 日期筛选 + 标签栏 */}
+      <div className="sticky top-16 z-30 bg-white/95 backdrop-blur-sm rounded-xl border border-gray-200 shadow-sm p-4 space-y-3">
+        {/* 标题行 + 操作按钮 */}
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <h2 className="text-xl font-bold text-gray-900 shrink-0">数据分析</h2>
           <div className="flex items-center gap-2 flex-wrap">
-            <input
-              type="date"
-              value={dateFrom}
-              min={rawDateRange.min}
-              max={dateTo || rawDateRange.max}
-              onChange={e => setDateFrom(e.target.value)}
-              className="text-sm border border-blue-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 focus:ring-2 focus:ring-blue-400 focus:outline-none"
-            />
-            <span className="text-gray-400 text-sm">至</span>
-            <input
-              type="date"
-              value={dateTo}
-              min={dateFrom || rawDateRange.min}
-              max={rawDateRange.max}
-              onChange={e => setDateTo(e.target.value)}
-              className="text-sm border border-blue-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 focus:ring-2 focus:ring-blue-400 focus:outline-none"
-            />
-            <span className="text-xs text-blue-500 bg-blue-100 px-2 py-1 rounded-full">
-              {filteredRawData?.length ?? 0} / {rawData.length} 条
-            </span>
-            {(dateFrom !== rawDateRange.min || dateTo !== rawDateRange.max) && (
-              <button
-                onClick={() => { setDateFrom(rawDateRange.min); setDateTo(rawDateRange.max); }}
-                className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 transition-colors"
-              >
-                <RotateCcw className="w-3 h-3" />
-                重置
-              </button>
+            {/* 状态反馈 */}
+            {saveStatus === 'saving' && (
+              <div className="flex items-center text-blue-600 text-sm gap-1.5">
+                <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-blue-600"></div>
+                保存中…
+              </div>
             )}
+            {saveStatus === 'success' && (
+              <span className="text-green-600 text-sm font-medium">✓ 已保存</span>
+            )}
+            {saveStatus === 'error' && (
+              <span className="text-red-600 text-sm font-medium">✗ 保存失败</span>
+            )}
+            {/* 生成周报 - 次要按钮 */}
+            <button
+              onClick={() => { setReportText(generateWeeklyReport()); setShowWeeklyReport(true); }}
+              disabled={!rawData || rawData.length === 0}
+              className="flex items-center px-3 py-1.5 text-sm text-gray-600 border border-gray-300 bg-white rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              <ClipboardList className="w-3.5 h-3.5 mr-1.5" />
+              生成周报
+            </button>
+            {/* 导出PDF - 次要按钮 */}
+            <button
+              onClick={handleExportPDF}
+              disabled={pdfExporting || !rawData || rawData.length === 0}
+              className="flex items-center px-3 py-1.5 text-sm text-gray-600 border border-gray-300 bg-white rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              <FileDown className="w-3.5 h-3.5 mr-1.5" />
+              {pdfExporting ? '导出中…' : '导出PDF'}
+            </button>
+            {/* 保存快照 - 主要按钮 */}
+            <button
+              onClick={() => setShowSaveModal(true)}
+              disabled={!rawData || rawData.length === 0 || saveStatus === 'saving'}
+              className="flex items-center px-4 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              <Save className="w-3.5 h-3.5 mr-1.5" />
+              保存快照
+            </button>
           </div>
         </div>
-      )}
+
+        {/* 全局日期范围筛选 */}
+        {rawData && rawData.length > 0 && (
+          <div className="flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 flex-wrap">
+            <Filter className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+            <span className="text-xs font-medium text-blue-700 shrink-0">日期筛选：</span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <input
+                type="date"
+                value={dateFrom}
+                min={rawDateRange.min}
+                max={dateTo || rawDateRange.max}
+                onChange={e => setDateFrom(e.target.value)}
+                className="text-xs border border-blue-200 rounded-md px-2 py-1 bg-white text-gray-700 focus:ring-1 focus:ring-blue-400 focus:outline-none"
+              />
+              <span className="text-gray-400 text-xs">至</span>
+              <input
+                type="date"
+                value={dateTo}
+                min={dateFrom || rawDateRange.min}
+                max={rawDateRange.max}
+                onChange={e => setDateTo(e.target.value)}
+                className="text-xs border border-blue-200 rounded-md px-2 py-1 bg-white text-gray-700 focus:ring-1 focus:ring-blue-400 focus:outline-none"
+              />
+              <span className="text-xs text-blue-500 bg-blue-100 px-2 py-0.5 rounded-full">
+                {filteredRawData?.length ?? 0} / {rawData.length} 条
+              </span>
+              {(dateFrom !== rawDateRange.min || dateTo !== rawDateRange.max) && (
+                <button
+                  onClick={() => { setDateFrom(rawDateRange.min); setDateTo(rawDateRange.max); }}
+                  className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 transition-colors"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  重置
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 标签栏 - 横向滚动，不折行 */}
+        <div className="overflow-x-auto -mx-1 px-1">
+          <nav className="flex gap-1 min-w-max">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
+                    activeTab === tab.id
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                  }`}
+                >
+                  <Icon className="w-4 h-4 mr-1.5" />
+                  {tab.name}
+                </button>
+              );
+            })}
+          </nav>
+        </div>
       </div>
 
-      {/* Tab Navigation */}
-      <div className="bg-white rounded-xl border border-gray-200 p-2">
-        <nav className="flex flex-wrap gap-2">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
-                  activeTab === tab.id
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                }`}
-              >
-                <Icon className="w-4 h-4 mr-2" />
-                {tab.name}
-              </button>
-            );
-          })}
-        </nav>
-      </div>
-
-      {/* Tab Content */}
+      {/* 标签页内容区 */}
       <div className="min-h-96 overflow-visible" ref={dashboardContentRef}>
         {renderContent()}
       </div>
