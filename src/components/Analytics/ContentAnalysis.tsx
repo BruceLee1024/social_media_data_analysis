@@ -834,6 +834,7 @@ const ContentAnalysis: React.FC<ContentAnalysisProps> = ({ contentTypes, topCont
             <div className="space-y-3">
               {scored.map((item, i) => {
                 const score = Math.round(item.score);
+                const d = item.data; // ScoredContent.data 才是 UnifiedData
                 const scoreColor = score >= 70 ? 'text-green-600 bg-green-50' : score >= 40 ? 'text-yellow-600 bg-yellow-50' : 'text-gray-500 bg-gray-50';
                 return (
                   <div key={i} className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50/80 to-yellow-50/30 rounded-xl border border-gray-100 hover:shadow-md transition-all">
@@ -841,13 +842,13 @@ const ContentAnalysis: React.FC<ContentAnalysisProps> = ({ contentTypes, topCont
                       <span className={`flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-xs font-bold text-white ${
                         i === 0 ? 'bg-yellow-400' : i === 1 ? 'bg-gray-400' : i === 2 ? 'bg-amber-600' : 'bg-gray-200 text-gray-600'
                       }`}>{i + 1}</span>
-                      <span className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full ${getPlatformBadgeColor(item['来源平台'])}`}>
-                        {item['来源平台']}
+                      <span className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full ${getPlatformBadgeColor(d.来源平台)}`}>
+                        {d.来源平台}
                       </span>
-                      <span className="text-sm text-gray-800 truncate">{item['标题描述'] || '无标题'}</span>
+                      <span className="text-sm text-gray-800 truncate">{d.标题描述 || '无标题'}</span>
                     </div>
                     <div className="flex items-center space-x-4 flex-shrink-0 ml-3">
-                      <span className="text-xs text-gray-400">{(item['播放量'] || 0).toLocaleString()}播放</span>
+                      <span className="text-xs text-gray-400">{(d.播放量 || 0).toLocaleString()}播放</span>
                       <span className={`text-sm font-bold px-2 py-1 rounded-lg ${scoreColor}`}>{score}分</span>
                     </div>
                   </div>

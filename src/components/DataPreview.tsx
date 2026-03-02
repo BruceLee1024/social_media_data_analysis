@@ -47,6 +47,14 @@ const DataPreview: React.FC<DataPreviewProps> = ({ data, onExport, summary }) =>
     return m;
   }, [data]);
 
+  // 异常检测：计算播放量均值（必须在 filteredAndSortedData 之前声明）
+  const anomalyInfo = useMemo(() => {
+    const views = data.map(r => r.播放量 || 0).filter(v => v > 0);
+    if (views.length === 0) return { viralThreshold: Infinity, lowThreshold: 0 };
+    const mean = views.reduce((s, v) => s + v, 0) / views.length;
+    return { viralThreshold: mean * 2, lowThreshold: mean * 0.5 };
+  }, [data]);
+
   const filteredAndSortedData = useMemo(() => {
     let result = data;
     if (platformFilter !== 'all') result = result.filter(r => r.来源平台 === platformFilter);
@@ -163,14 +171,6 @@ const DataPreview: React.FC<DataPreviewProps> = ({ data, onExport, summary }) =>
       )
     };
   };
-  // 异常检测：计算播放量均值
-  const anomalyInfo = useMemo(() => {
-    const views = data.map(r => r.播放量 || 0).filter(v => v > 0);
-    if (views.length === 0) return { viralThreshold: Infinity, lowThreshold: 0 };
-    const mean = views.reduce((s, v) => s + v, 0) / views.length;
-    return { viralThreshold: mean * 2, lowThreshold: mean * 0.5 };
-  }, [data]);
-
   const totalPages = Math.ceil(filteredAndSortedData.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentData = filteredAndSortedData.slice(startIndex, startIndex + itemsPerPage);
