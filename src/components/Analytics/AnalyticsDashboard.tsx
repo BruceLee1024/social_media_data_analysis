@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
-import { BarChart3, TrendingUp, FileText, Award, ChartBar, Users, Activity, Save, Layers, FileDown, ClipboardList, X, Copy, Check, CalendarDays, Filter, RotateCcw } from 'lucide-react';
+import { BarChart3, TrendingUp, FileText, Award, ChartBar, Users, Activity, Save, Layers, FileDown, ClipboardList, X, Copy, Check, CalendarDays, Filter, RotateCcw, Search } from 'lucide-react';
 import { AnalyticsData, UnifiedData } from '../../types';
 import OverviewCards from './OverviewCards';
 import PlatformComparison from './PlatformComparison';
@@ -11,6 +11,7 @@ import ContentPerformanceHeatmap from './ContentPerformanceHeatmap';
 import CrossPlatformAnalysis from './CrossPlatformAnalysis';
 import InsightCards from './InsightCards';
 import ContentCalendar from './ContentCalendar';
+import ContentReview from './ContentReview';
 import { SnapshotManager } from '../../utils/snapshotManager';
 
 interface AnalyticsDashboardProps {
@@ -21,7 +22,7 @@ interface AnalyticsDashboardProps {
 }
 
 const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ analytics, summary, rawData, goalData }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'platform' | 'trend' | 'content' | 'engagement' | 'followers' | 'heatmap' | 'crossplatform' | 'calendar'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'platform' | 'trend' | 'content' | 'engagement' | 'followers' | 'heatmap' | 'crossplatform' | 'calendar' | 'contentreview'>('overview');
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [showWeeklyReport, setShowWeeklyReport] = useState(false);
@@ -205,6 +206,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ analytics, summ
     { id: 'platform', name: '平台对比', icon: Award },
     { id: 'trend', name: '趋势分析', icon: TrendingUp },
     { id: 'content', name: '内容分析', icon: FileText },
+    { id: 'contentreview', name: '内容复盘', icon: Search },
     { id: 'engagement', name: '互动分析', icon: Activity },
     { id: 'followers', name: '粉丝增长', icon: Users },
     { id: 'heatmap', name: '时间热力图', icon: ChartBar },
@@ -247,6 +249,8 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ analytics, summ
         return <TrendAnalysis data={analytics.timeSeriesData} rawData={fd} />;
       case 'content':
         return <ContentAnalysis contentTypes={analytics.contentTypeAnalysis} topContent={analytics.topContent} rawData={fd} />;
+      case 'contentreview':
+        return fd ? <ContentReview data={fd} /> : noData;
       case 'engagement':
         return fd ? <EngagementAnalysis data={fd} /> : noData;
       case 'followers':
