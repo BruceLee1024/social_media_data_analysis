@@ -7,6 +7,7 @@ import DataPreview from './components/DataPreview';
 import AnalyticsDashboard from './components/Analytics/AnalyticsDashboard';
 import DetailedGoalDashboard from './components/Analytics/DetailedGoalDashboard';
 import SnapshotManager from './components/SnapshotManager';
+import LandingPage from './components/LandingPage';
 import { FileProcessor } from './utils/fileProcessor';
 import { DataProcessor } from './utils/dataProcessor';
 import { AnalyticsProcessor } from './utils/analyticsProcessor';
@@ -324,146 +325,7 @@ function App() {
       <div className="px-4 py-8 w-full max-w-none overflow-visible">
         {/* Main Content - 首页单独处理 */}
         {activeView === 'home' ? (
-          <div className="relative min-h-[calc(100vh-200px)] overflow-hidden">
-            {/* 背景装饰 */}
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-              <div className="absolute top-20 left-10 w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-pulse"></div>
-              <div className="absolute top-40 right-10 w-72 h-72 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-pulse animation-delay-2000"></div>
-              <div className="absolute -bottom-8 left-20 w-72 h-72 bg-indigo-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-pulse animation-delay-4000"></div>
-            </div>
-
-            <div className="relative z-10 flex flex-col items-center justify-center min-h-full container mx-auto px-4">
-              {/* 英雄区域 */}
-              <div className="text-center mb-16 max-w-4xl">
-                {/* 主标题 */}
-                <div className="mb-8">
-                  <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl mb-6 shadow-lg">
-                    <Database className="w-10 h-10 text-white" />
-                  </div>
-                  <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 bg-clip-text text-transparent mb-6 leading-tight">
-                    智能数据整合
-                  </h1>
-                  <h2 className="text-2xl md:text-3xl font-semibold text-gray-700 mb-6">
-                    多平台数据，一键统一
-                  </h2>
-                </div>
-
-                {/* 描述文字 */}
-                <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed mb-8">
-                  支持抖音、视频号、小红书等主流平台数据文件，
-                  <span className="text-blue-600 font-semibold">智能识别平台类型</span>，
-                  <span className="text-purple-600 font-semibold">自动统一字段格式</span>，
-                  让您专注于数据洞察而非数据处理
-                </p>
-
-                {/* 特性标签 */}
-                <div className="flex flex-wrap justify-center gap-3 mb-12">
-                  <span className="px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
-                    🚀 智能识别
-                  </span>
-                  <span className="px-4 py-2 bg-green-100 text-green-700 rounded-full text-sm font-medium">
-                    ⚡ 快速处理
-                  </span>
-                  <span className="px-4 py-2 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
-                    📊 可视化分析
-                  </span>
-                  <span className="px-4 py-2 bg-orange-100 text-orange-700 rounded-full text-sm font-medium">
-                    📈 目标跟踪
-                  </span>
-                </div>
-              </div>
-
-              {/* 功能展示卡片 */}
-              <div className="w-full max-w-6xl">
-                {/* 主要功能卡片 */}
-                <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl border border-white/20 p-8 md:p-12 mb-12">
-                  <div className="text-center mb-10">
-                    <h3 className="text-2xl font-bold text-gray-900 mb-4">
-                      三步完成数据整合
-                    </h3>
-                    <p className="text-gray-600 text-lg">
-                      简单易用的工作流程，让数据处理变得轻松高效
-                    </p>
-                  </div>
-
-                  {/* 步骤展示 */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
-                    <div className="group relative">
-                      <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-2xl border border-blue-200 transition-all duration-300 group-hover:shadow-lg group-hover:scale-105">
-                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mb-4">
-                          <FileText className="w-6 h-6 text-white" />
-                        </div>
-                        <h4 className="text-lg font-semibold text-gray-900 mb-2">1. 上传文件</h4>
-                        <p className="text-gray-600 text-sm leading-relaxed">
-                          支持多平台数据文件同时上传，
-                          自动识别文件格式和平台类型
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="group relative">
-                      <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-2xl border border-purple-200 transition-all duration-300 group-hover:shadow-lg group-hover:scale-105">
-                        <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center mb-4">
-                          <RefreshCcw className="w-6 h-6 text-white" />
-                        </div>
-                        <h4 className="text-lg font-semibold text-gray-900 mb-2">2. 智能处理</h4>
-                        <p className="text-gray-600 text-sm leading-relaxed">
-                          AI驱动的数据清洗和格式统一，
-                          确保数据质量和一致性
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="group relative">
-                      <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-2xl border border-green-200 transition-all duration-300 group-hover:shadow-lg group-hover:scale-105">
-                        <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center mb-4">
-                          <BarChart3 className="w-6 h-6 text-white" />
-                        </div>
-                        <h4 className="text-lg font-semibold text-gray-900 mb-2">3. 分析导出</h4>
-                        <p className="text-gray-600 text-sm leading-relaxed">
-                          获得标准化数据和深度分析报告，
-                          支持多种格式导出
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 行动按钮 */}
-                  <div className="text-center">
-                    <button
-                      onClick={() => setActiveView('data')}
-                      className="group relative inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-white bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
-                    >
-                      <span className="relative z-10 flex items-center">
-                        开始数据整合之旅
-                        <Database className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-                      </span>
-                      <div className="absolute inset-0 bg-gradient-to-r from-blue-700 to-purple-700 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                    </button>
-                  </div>
-                </div>
-
-                {/* 支持平台展示 */}
-                <div className="bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 p-6">
-                  <div className="text-center mb-6">
-                    <h4 className="text-lg font-semibold text-gray-900 mb-2">支持的数据平台</h4>
-                    <p className="text-gray-600 text-sm">覆盖主流内容创作和营销平台</p>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="flex items-center justify-center p-4 bg-gradient-to-r from-black to-gray-800 rounded-xl text-white">
-                      <span className="font-medium">🎵 抖音 (Excel)</span>
-                    </div>
-                    <div className="flex items-center justify-center p-4 bg-gradient-to-r from-green-500 to-green-600 rounded-xl text-white">
-                      <span className="font-medium">📱 视频号 (CSV)</span>
-                    </div>
-                    <div className="flex items-center justify-center p-4 bg-gradient-to-r from-red-500 to-pink-500 rounded-xl text-white">
-                      <span className="font-medium">📖 小红书 (Excel)</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <LandingPage onNavigateToData={() => setActiveView('data')} />
         ) : (
           <div className={`grid grid-cols-1 lg:grid-cols-4 gap-6 items-start container mx-auto overflow-visible ${
             activeView === 'analytics' ? 'lg:grid-cols-1' : ''

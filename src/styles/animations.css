@@ -9,6 +9,18 @@
   animation-delay: 4s;
 }
 
+.animation-delay-1000 {
+  animation-delay: 1s;
+}
+
+.animation-delay-3000 {
+  animation-delay: 3s;
+}
+
+.animation-delay-5000 {
+  animation-delay: 5s;
+}
+
 /* 渐变文字动画 */
 @keyframes gradient-shift {
   0%, 100% {
@@ -71,4 +83,218 @@
 .animate-border-gradient {
   border: 2px solid;
   animation: border-gradient 3s ease infinite;
+}
+
+/* ========== 科技感 Landing Page 动画 ========== */
+
+/* 网格背景 */
+.tech-grid-bg {
+  background-image:
+    linear-gradient(rgba(59, 130, 246, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59, 130, 246, 0.06) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+/* 扫描线动画 */
+@keyframes scan-line {
+  0% {
+    top: -5%;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    top: 105%;
+    opacity: 0;
+  }
+}
+
+.animate-scan-line {
+  animation: scan-line 6s ease-in-out infinite;
+}
+
+/* 呼吸光晕 */
+@keyframes glow-breathe {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.15);
+  }
+}
+
+.animate-glow-breathe {
+  animation: glow-breathe 4s ease-in-out infinite;
+}
+
+/* 数据流动画 */
+@keyframes data-flow {
+  0% {
+    transform: translateY(100%) scaleY(0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(50%) scaleY(1);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-100%) scaleY(0);
+    opacity: 0;
+  }
+}
+
+.animate-data-flow {
+  animation: data-flow 3s ease-in-out infinite;
+}
+
+/* 霓虹闪烁 */
+@keyframes neon-flicker {
+  0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
+    text-shadow:
+      0 0 4px #fff,
+      0 0 11px #fff,
+      0 0 19px #fff,
+      0 0 40px #0fa,
+      0 0 80px #0fa;
+    opacity: 1;
+  }
+  20%, 24%, 55% {
+    text-shadow: none;
+    opacity: 0.8;
+  }
+}
+
+/* 渐变发光边框 */
+@keyframes border-glow-rotate {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.tech-card-glow {
+  position: relative;
+}
+
+.tech-card-glow::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, #06b6d4, #3b82f6, #8b5cf6, #06b6d4);
+  background-size: 300% 300%;
+  animation: border-glow-rotate 4s linear infinite;
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* 粒子上升动画 */
+@keyframes particle-rise {
+  0% {
+    transform: translateY(0) translateX(0) scale(1);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.8;
+  }
+  90% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(-400px) translateX(var(--drift, 20px)) scale(0);
+    opacity: 0;
+  }
+}
+
+.animate-particle-rise {
+  animation: particle-rise var(--duration, 5s) ease-in-out infinite;
+  animation-delay: var(--delay, 0s);
+}
+
+/* 标题打字光标 */
+@keyframes cursor-blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+.animate-cursor-blink {
+  animation: cursor-blink 1s step-end infinite;
+}
+
+/* 水平数据条动画 */
+@keyframes bar-extend {
+  0% {
+    width: 0;
+  }
+  100% {
+    width: var(--bar-width, 60%);
+  }
+}
+
+.animate-bar-extend {
+  animation: bar-extend 1.5s ease-out forwards;
+  animation-delay: var(--bar-delay, 0s);
+}
+
+/* 脉冲环 */
+@keyframes ring-pulse {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.5;
+    border-color: rgba(6, 182, 212, 0.6);
+  }
+  50% {
+    transform: scale(1);
+    opacity: 1;
+    border-color: rgba(59, 130, 246, 0.8);
+  }
+  100% {
+    transform: scale(0.8);
+    opacity: 0.5;
+    border-color: rgba(6, 182, 212, 0.6);
+  }
+}
+
+.animate-ring-pulse {
+  animation: ring-pulse 3s ease-in-out infinite;
+}
+
+/* 入场渐显 (带 stagger 支持) */
+@keyframes fade-up-in {
+  0% {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up-in {
+  animation: fade-up-in 0.8s ease-out forwards;
+  opacity: 0;
 }
