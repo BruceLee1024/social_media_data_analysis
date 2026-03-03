@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
-import { BarChart3, TrendingUp, FileText, Award, ChartBar, Users, Activity, Save, Layers, FileDown, ClipboardList, X, Copy, Check, CalendarDays, Filter, RotateCcw, Search } from 'lucide-react';
+import { BarChart3, TrendingUp, FileText, Award, ChartBar, Users, Activity, Save, Layers, FileDown, ClipboardList, X, Copy, Check, CalendarDays, Filter, RotateCcw, Search, Sparkles, Settings, Loader2 } from 'lucide-react';
 import { AnalyticsData, UnifiedData } from '../../types';
 import OverviewCards from './OverviewCards';
 import PlatformComparison from './PlatformComparison';
@@ -10,9 +10,12 @@ import FollowerGrowthAnalysis from './FollowerGrowthAnalysis';
 import ContentPerformanceHeatmap from './ContentPerformanceHeatmap';
 import CrossPlatformAnalysis from './CrossPlatformAnalysis';
 import InsightCards from './InsightCards';
+import AIOverviewCard from './AIOverviewCard';
 import ContentCalendar from './ContentCalendar';
 import ContentReview from './ContentReview';
+import AISettingsModal from '../AISettingsModal';
 import { SnapshotManager } from '../../utils/snapshotManager';
+import { streamChat, hasDeepSeekApiKey, buildWeeklyReportPrompt, buildOverviewSummaryPrompt } from '../../utils/deepseekApi';
 
 interface AnalyticsDashboardProps {
   analytics: AnalyticsData;
@@ -29,7 +32,14 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ analytics, summ
   const [reportText, setReportText] = useState('');
   const [reportCopied, setReportCopied] = useState(false);
   const [pdfExporting, setPdfExporting] = useState(false);
+  const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
+  const [weeklyAiLoading, setWeeklyAiLoading] = useState(false);
+  const [overviewAiLoading, setOverviewAiLoading] = useState(false);
+  const [overviewAiText, setOverviewAiText] = useState('');
+  const [overviewAiError, setOverviewAiError] = useState('');
   const dashboardContentRef = useRef<HTMLDivElement>(null);
+  const weeklyAbortRef = useRef<AbortController | null>(null);
+  const overviewAbortRef = useRef<AbortController | null>(null);
 
   // 全局日期范围
   const rawDateRange = useMemo(() => {
@@ -135,6 +145,59 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ analytics, summ
     return report;
   }, [analytics, rawData]);
 
+  const handleGenerateWeeklyAiReport = useCallback(() => {
+    if (!hasDeepSeekApiKey()) {
+      setAiSettingsOpen(true);
+      return;
+    }
+    if (weeklyAiLoading) {
+      weeklyAbortRef.current?.abort();
+      setWeeklyAiLoading(false);
+      return;
+    }
+    setReportText('');
+    setWeeklyAiLoading(true);
+    const prompt = buildWeeklyReportPrompt(analytics, filteredRawData ?? rawData, summary);
+    weeklyAbortRef.current = streamChat(
+      prompt,
+      (chunk) => setReportText(prev => prev + chunk),
+      () => setWeeklyAiLoading(false),
+      (error) => setReportText(prev => `${prev}${prev ? '\n\n' : ''}⚠️ ${error}`),
+    );
+  }, [analytics, filteredRawData, rawData, summary, weeklyAiLoading]);
+
+  const handleGenerateOverviewAiSummary = useCallback(() => {
+    if (!hasDeepSeekApiKey()) {
+      setAiSettingsOpen(true);
+      return;
+    }
+    if (overviewAiLoading) {
+      overviewAbortRef.current?.abort();
+      setOverviewAiLoading(false);
+      return;
+    }
+    setOverviewAiError('');
+    setOverviewAiText('');
+    setOverviewAiLoading(true);
+    const prompt = buildOverviewSummaryPrompt(analytics, summary);
+    overviewAbortRef.current = streamChat(
+      prompt,
+      (chunk) => setOverviewAiText(prev => prev + chunk),
+      () => setOverviewAiLoading(false),
+      (error) => {
+        setOverviewAiLoading(false);
+        setOverviewAiError(error);
+      },
+    );
+  }, [analytics, summary, overviewAiLoading]);
+
+  useEffect(() => {
+    return () => {
+      weeklyAbortRef.current?.abort();
+      overviewAbortRef.current?.abort();
+    };
+  }, []);
+
   // PDF 导出
   const handleExportPDF = async () => {
     if (!dashboardContentRef.current) return;
@@ -223,6 +286,12 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ analytics, summ
           return (
             <>
               <InsightCards analytics={analytics} rawData={fd} />
+              <AIOverviewCard
+                content={overviewAiText}
+                loading={overviewAiLoading}
+                error={overviewAiError}
+                onGenerate={handleGenerateOverviewAiSummary}
+              />
               <OverviewCards
                 metrics={analytics.performanceMetrics}
                 totalDataCount={summary.总数据量}
@@ -240,6 +309,12 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ analytics, summ
         return (
           <>
             <InsightCards analytics={analytics} rawData={fd} />
+            <AIOverviewCard
+              content={overviewAiText}
+              loading={overviewAiLoading}
+              error={overviewAiError}
+              onGenerate={handleGenerateOverviewAiSummary}
+            />
             <OverviewCards metrics={analytics.performanceMetrics} />
           </>  
         );
@@ -287,9 +362,17 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ analytics, summ
             {saveStatus === 'error' && (
               <span className="text-red-600 text-sm font-medium">✗ 保存失败</span>
             )}
+            {/* AI 设置 */}
+            <button
+              onClick={() => setAiSettingsOpen(true)}
+              className="flex items-center px-3 py-1.5 text-sm text-gray-600 border border-gray-300 bg-white rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <Settings className="w-3.5 h-3.5 mr-1.5" />
+              AI 设置
+            </button>
             {/* 生成周报 - 次要按钮 */}
             <button
-              onClick={() => { setReportText(generateWeeklyReport()); setShowWeeklyReport(true); }}
+              onClick={() => { setShowWeeklyReport(true); }}
               disabled={!rawData || rawData.length === 0}
               className="flex items-center px-3 py-1.5 text-sm text-gray-600 border border-gray-300 bg-white rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
@@ -392,16 +475,39 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ analytics, summ
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900 flex items-center">
                 <ClipboardList className="w-5 h-5 mr-2 text-indigo-600" />
-                数据分析报告
+                数据分析周报
               </h3>
               <button onClick={() => setShowWeeklyReport(false)} className="text-gray-400 hover:text-gray-600">
                 <X className="w-5 h-5" />
               </button>
             </div>
+            <div className="flex items-center gap-2 mb-3">
+              <button
+                onClick={handleGenerateWeeklyAiReport}
+                className={`flex items-center px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                  weeklyAiLoading
+                    ? 'bg-red-50 text-red-700 border border-red-200 hover:bg-red-100'
+                    : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                }`}
+              >
+                {weeklyAiLoading
+                  ? <X className="w-3.5 h-3.5 mr-1.5" />
+                  : <Sparkles className="w-3.5 h-3.5 mr-1.5" />}
+                {weeklyAiLoading ? '停止 AI 生成' : 'AI 生成'}
+              </button>
+              <button
+                onClick={() => setReportText(generateWeeklyReport())}
+                className="flex items-center px-3 py-1.5 text-sm rounded-lg border border-gray-300 text-gray-600 bg-white hover:bg-gray-50"
+              >
+                模板生成
+              </button>
+              {weeklyAiLoading && <Loader2 className="w-4 h-4 text-indigo-500 animate-spin" />}
+            </div>
             <textarea
               readOnly
               value={reportText}
               className="flex-1 min-h-64 p-4 text-sm text-gray-800 bg-gray-50 border border-gray-200 rounded-lg resize-none font-mono leading-relaxed focus:outline-none"
+              placeholder="点击“AI 生成”或“模板生成”生成周报内容"
             />
             <div className="flex justify-end gap-3 mt-4">
               <button
@@ -424,6 +530,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ analytics, summ
         </div>
       )}
 
+      <AISettingsModal open={aiSettingsOpen} onClose={() => setAiSettingsOpen(false)} />
       {/* Save Snapshot Modal */}
       {showSaveModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

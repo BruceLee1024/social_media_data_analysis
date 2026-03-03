@@ -1,4 +1,4 @@
-import { ContentGroup } from '../types';
+import type { AnalyticsData, ContentGroup, UnifiedData } from '../types';
 import { normalizeCompletionRate, formatCompletionRate, supportCompletionRate } from './completionRateUtils';
 
 const STORAGE_KEY = 'deepseek_api_key';
@@ -189,6 +189,125 @@ export function buildContentAnalysisPrompt(group: ContentGroup): string {
 5. **发布策略建议**：时间、频率、平台侧重方面有什么建议？
 
 请用简洁有力的语言回答，给出可执行的建议。`;
+
+  return prompt;
+}
+
+/**
+ * 构建 AI 周报 prompt（全局）
+ */
+export function buildWeeklyReportPrompt(
+  analytics: AnalyticsData,
+  rawData?: UnifiedData[],
+  summary?: any,
+): string {
+  const { performanceMetrics, platformComparison, topContent, timeSeriesData } = analytics;
+  const dateRange = summary?.时间范围
+    ? `${summary.时间范围.最早 || '-'} ~ ${summary.时间范围.最晚 || '-'}`
+    : '-';
+
+  // 趋势：后半段 vs 前半段
+  let trendText = '样本不足，无法判断趋势';
+  if (timeSeriesData.length >= 6) {
+    const half = Math.floor(timeSeriesData.length / 2);
+    const keys = ['抖音播放量', '视频号播放量', '小红书播放量'];
+    const sumViews = (arr: typeof timeSeriesData) =>
+      arr.reduce((sum, d) => sum + keys.reduce((s, k) => s + ((d as any)[k] || 0), 0), 0);
+    const earlyAvg = sumViews(timeSeriesData.slice(0, half)) / Math.max(1, half);
+    const laterAvg = sumViews(timeSeriesData.slice(half)) / Math.max(1, timeSeriesData.length - half);
+    const trend = earlyAvg > 0 ? ((laterAvg - earlyAvg) / earlyAvg) * 100 : 0;
+    trendText = `后半周期较前半周期 ${trend >= 0 ? '增长' : '下降'} ${Math.abs(trend).toFixed(1)}%`;
+  }
+
+  // 发布日建议
+  let bestDayText = '暂无';
+  if (rawData && rawData.length > 0) {
+    const dayStats: Record<number, { views: number; count: number }> = {};
+    for (const item of rawData) {
+      const day = new Date(item.发布时间).getDay();
+      if (!dayStats[day]) dayStats[day] = { views: 0, count: 0 };
+      dayStats[day].views += item.播放量 || 0;
+      dayStats[day].count += 1;
+    }
+    const dayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+    const ranked = Object.entries(dayStats)
+      .map(([d, s]) => ({ day: dayNames[Number(d)], avg: s.count > 0 ? s.views / s.count : 0 }))
+      .sort((a, b) => b.avg - a.avg);
+    if (ranked.length > 0) {
+      bestDayText = `${ranked[0].day}（平均播放 ${Math.round(ranked[0].avg).toLocaleString()}）`;
+    }
+  }
+
+  let prompt = `请基于以下数据生成一份“中文周报”，输出使用 Markdown。\n\n`;
+  prompt += `## 基础信息\n`;
+  prompt += `- 时间范围：${dateRange}\n`;
+  prompt += `- 总内容数：${performanceMetrics.totalContent}\n`;
+  prompt += `- 总播放量：${performanceMetrics.totalViews.toLocaleString()}\n`;
+  prompt += `- 总点赞量：${performanceMetrics.totalLikes.toLocaleString()}\n`;
+  prompt += `- 总评论量：${performanceMetrics.totalComments.toLocaleString()}\n`;
+  prompt += `- 总分享量：${performanceMetrics.totalShares.toLocaleString()}\n`;
+  prompt += `- 平均互动率：${(performanceMetrics.avgEngagementRate * 100).toFixed(2)}%\n`;
+  prompt += `- 最佳平台：${performanceMetrics.bestPerformingPlatform}\n`;
+  prompt += `- 播放趋势：${trendText}\n`;
+  prompt += `- 最佳发布日：${bestDayText}\n\n`;
+
+  prompt += `## 各平台表现\n`;
+  platformComparison.forEach((p) => {
+    prompt += `- ${p.platform}：内容 ${p.totalContent} 条，播放 ${p.totalViews.toLocaleString()}，点赞 ${p.totalLikes.toLocaleString()}，互动率 ${(p.avgEngagementRate * 100).toFixed(2)}%\n`;
+  });
+  prompt += `\n`;
+
+  if (topContent?.length) {
+    prompt += `## Top 内容（按表现）\n`;
+    topContent.slice(0, 5).forEach((item, idx) => {
+      prompt += `${idx + 1}. [${item.platform}] ${item.title}（播放 ${item.views.toLocaleString()}，互动率 ${(item.engagementRate * 100).toFixed(2)}%）\n`;
+    });
+    prompt += `\n`;
+  }
+
+  prompt += `请按以下结构输出：\n`;
+  prompt += `1. 本周总体结论（3-5条）\n`;
+  prompt += `2. 各平台诊断（每个平台 2 条：亮点 + 问题）\n`;
+  prompt += `3. 下周执行建议（不少于 5 条，必须可执行）\n`;
+  prompt += `4. 风险提醒（2-3条）\n`;
+  prompt += `要求：不要空话，避免“建议多发内容”这种泛化建议。`;
+
+  return prompt;
+}
+
+/**
+ * 构建 AI 概览 prompt（overview）
+ */
+export function buildOverviewSummaryPrompt(
+  analytics: AnalyticsData,
+  summary?: any,
+): string {
+  const { performanceMetrics, platformComparison } = analytics;
+  const range = summary?.时间范围
+    ? `${summary.时间范围.最早 || '-'} ~ ${summary.时间范围.最晚 || '-'}`
+    : '-';
+
+  let prompt = `请基于以下数据生成“数据概览 AI 总结”，输出中文 Markdown。\n\n`;
+  prompt += `## 核心数据\n`;
+  prompt += `- 时间范围：${range}\n`;
+  prompt += `- 内容总数：${performanceMetrics.totalContent}\n`;
+  prompt += `- 总播放量：${performanceMetrics.totalViews.toLocaleString()}\n`;
+  prompt += `- 总点赞量：${performanceMetrics.totalLikes.toLocaleString()}\n`;
+  prompt += `- 总评论量：${performanceMetrics.totalComments.toLocaleString()}\n`;
+  prompt += `- 总分享量：${performanceMetrics.totalShares.toLocaleString()}\n`;
+  prompt += `- 平均互动率：${(performanceMetrics.avgEngagementRate * 100).toFixed(2)}%\n`;
+  prompt += `- 最佳平台：${performanceMetrics.bestPerformingPlatform}\n\n`;
+
+  prompt += `## 平台明细\n`;
+  platformComparison.forEach((p) => {
+    prompt += `- ${p.platform}：内容 ${p.totalContent} 条，播放 ${p.totalViews.toLocaleString()}，互动率 ${(p.avgEngagementRate * 100).toFixed(2)}%\n`;
+  });
+  prompt += `\n`;
+
+  prompt += `请输出以下 3 个部分：\n`;
+  prompt += `1. 一句话总评\n`;
+  prompt += `2. 三条关键洞察（必须引用具体数据）\n`;
+  prompt += `3. 三条优先级最高的执行建议（按 P0/P1/P2 标注）`;
 
   return prompt;
 }
