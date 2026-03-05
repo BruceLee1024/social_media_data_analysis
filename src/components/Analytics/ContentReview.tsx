@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useRef, useCallback, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
 import {
   Search,
   Filter,
@@ -507,37 +508,81 @@ const ContentReview: React.FC<ContentReviewProps> = ({ data }) => {
                       </div>
 
                       {/* 扩展字段折叠 */}
-                      {activePlatforms.some(p => Object.keys(group.platforms[p].扩展字段 || {}).length > 0) && (
-                        <details className="rounded-xl border border-gray-200 bg-white">
-                          <summary className="px-3 py-2 text-xs font-medium text-gray-600 cursor-pointer hover:bg-gray-50">
-                            扩展字段
-                          </summary>
-                          <div className="px-3 pb-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                            {activePlatforms.map(platform => {
-                              const item = group.platforms[platform];
-                              const extEntries = Object.entries(item.扩展字段 || {}).sort(([a], [b]) => a.localeCompare(b, 'zh-CN'));
-                              if (extEntries.length === 0) return null;
-                              return (
-                                <div key={platform}>
-                                  <div className="text-xs font-medium text-gray-700 mb-1">
-                                    <span className={`inline-block px-1.5 py-0.5 rounded text-xs mr-1 ${PLATFORM_COLORS[platform]}`}>{platform}</span>
-                                  </div>
-                                  <div className="space-y-1 text-xs text-gray-600">
-                                    {extEntries.map(([key, value]) => (
-                                      <div key={key} className="flex justify-between gap-2">
-                                        <span className="text-gray-500">{key}</span>
-                                        <span className="text-gray-800 font-medium">
-                                          {value === null || value === undefined || value === '' ? '-' : String(value)}
-                                        </span>
-                                      </div>
+                      {activePlatforms.some(p => Object.keys(group.platforms[p].扩展字段 || {}).length > 0) && (() => {
+                        const allExtKeys = Array.from(new Set(
+                          activePlatforms.flatMap(p => Object.keys(group.platforms[p]?.扩展字段 || {}))
+                        )).sort((a, b) => a.localeCompare(b, 'zh-CN'));
+                        const extFieldCount = allExtKeys.length;
+                        const formatExtValue = (value: any, key: string): { display: string; isRate: boolean } => {
+                          const isRate = /率$/.test(key);
+                          if (value === null || value === undefined || value === '') return { display: '-', isRate };
+                          if (isRate) {
+                            const num = typeof value === 'number' ? value : parseFloat(String(value).replace('%', ''));
+                            if (!isNaN(num)) {
+                              const pct = String(value).includes('%') ? num : (num <= 1 && num > 0 ? num * 100 : num);
+                              return { display: pct.toFixed(2) + '%', isRate: true };
+                            }
+                            return { display: String(value), isRate: true };
+                          }
+                          if (typeof value === 'number' && value >= 1000) {
+                            return { display: AnalyticsProcessor.formatNumber(value), isRate: false };
+                          }
+                          return { display: String(value), isRate: false };
+                        };
+                        return (
+                          <details className="rounded-xl border border-gray-200 bg-white">
+                            <summary className="px-4 py-3 text-xs font-semibold text-gray-700 cursor-pointer hover:bg-gray-50/80 select-none flex items-center gap-2">
+                              <span className="bg-gray-100 text-gray-500 rounded px-1.5 py-0.5 text-[10px] font-mono">EXT</span>
+                              扩展字段
+                              <span className="text-[10px] text-gray-400 font-normal ml-1">（{extFieldCount} 项）</span>
+                            </summary>
+                            <div className="overflow-x-auto">
+                              <table className="min-w-full text-xs">
+                                <thead>
+                                  <tr className="bg-gray-50 text-gray-500">
+                                    <th className="py-2.5 px-4 text-left font-medium w-36 sticky left-0 bg-gray-50 z-10">字段</th>
+                                    {activePlatforms.map(p => (
+                                      <th key={p} className="py-2.5 px-4 text-center font-medium">
+                                        <span className={`inline-block px-2 py-0.5 rounded-full text-xs ${PLATFORM_COLORS[p]}`}>{p}</span>
+                                      </th>
                                     ))}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </details>
-                      )}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {allExtKeys.map((key, idx) => (
+                                    <tr key={key} className={`border-t border-gray-50 hover:bg-blue-50/20 ${idx % 2 === 0 ? '' : 'bg-gray-50/30'}`}>
+                                      <td className="py-2 px-4 text-gray-600 font-medium sticky left-0 bg-white z-10 whitespace-nowrap">{key}</td>
+                                      {activePlatforms.map(platform => {
+                                        const extObj = group.platforms[platform]?.扩展字段 || {};
+                                        const rawVal = extObj[key];
+                                        const hasField = key in extObj;
+                                        const { display, isRate } = formatExtValue(rawVal, key);
+                                        return (
+                                          <td key={platform} className="py-2 px-4 text-center">
+                                            {!hasField ? (
+                                              <span className="inline-flex items-center gap-1 text-gray-300" title="该平台无此字段">
+                                                <Minus className="w-3 h-3" />
+                                              </span>
+                                            ) : (
+                                              <span className={`font-medium tabular-nums ${
+                                                isRate && display !== '-'
+                                                  ? 'text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded'
+                                                  : 'text-gray-800'
+                                              }`}>
+                                                {display}
+                                              </span>
+                                            )}
+                                          </td>
+                                        );
+                                      })}
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </details>
+                        );
+                      })()}
 
                       {/* AI 分析结果 */}
                       {(aiResult || aiError || isAiLoading) && (
@@ -553,8 +598,8 @@ const ContentReview: React.FC<ContentReviewProps> = ({ data }) => {
                             </div>
                           )}
                           {aiResult && (
-                            <div className="prose prose-sm max-w-none text-gray-800 leading-relaxed whitespace-pre-wrap">
-                              {aiResult}
+                            <div className="prose prose-sm max-w-none text-gray-800 leading-relaxed">
+                              <ReactMarkdown>{aiResult}</ReactMarkdown>
                             </div>
                           )}
                           <div ref={aiEndRef} />
