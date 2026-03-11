@@ -19,8 +19,20 @@ export class DataProcessor {
     return null;
   }
 
-  static normalizeTimeFormat(timeStr: string): string {
+  static normalizeTimeFormat(timeStr: string | Date): string {
     if (!timeStr) return '';
+
+    // 处理 Date 对象（cellDates: true 解析后的 Excel 日期序列号）
+    if (timeStr instanceof Date) {
+      if (isNaN(timeStr.getTime())) return '';
+      const y = timeStr.getFullYear();
+      const m = String(timeStr.getMonth() + 1).padStart(2, '0');
+      const d = String(timeStr.getDate()).padStart(2, '0');
+      const h = String(timeStr.getHours()).padStart(2, '0');
+      const min = String(timeStr.getMinutes()).padStart(2, '0');
+      const s = String(timeStr.getSeconds()).padStart(2, '0');
+      return `${y}-${m}-${d} ${h}:${min}:${s}`;
+    }
     
     // 尝试解析各种时间格式
     const patterns = [

@@ -13,6 +13,7 @@ import InsightCards from './InsightCards';
 import AIOverviewCard from './AIOverviewCard';
 import ContentCalendar from './ContentCalendar';
 import ContentReview from './ContentReview';
+import HistoricalComparison from './HistoricalComparison';
 import AISettingsModal from '../AISettingsModal';
 import { SnapshotManager } from '../../utils/snapshotManager';
 import { streamChat, hasDeepSeekApiKey, buildWeeklyReportPrompt, buildOverviewSummaryPrompt } from '../../utils/deepseekApi';
@@ -22,10 +23,11 @@ interface AnalyticsDashboardProps {
   summary?: any;
   rawData?: UnifiedData[];
   goalData?: any;
+  historicalData?: UnifiedData[];
 }
 
-const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ analytics, summary, rawData, goalData }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'platform' | 'trend' | 'content' | 'engagement' | 'followers' | 'heatmap' | 'crossplatform' | 'calendar' | 'contentreview'>('overview');
+const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ analytics, summary, rawData, goalData, historicalData }) => {
+  const [activeTab, setActiveTab] = useState<'overview' | 'platform' | 'trend' | 'content' | 'engagement' | 'followers' | 'heatmap' | 'crossplatform' | 'calendar' | 'contentreview' | 'historical'>('overview');
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [showWeeklyReport, setShowWeeklyReport] = useState(false);
@@ -85,7 +87,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ analytics, summ
     setSaveStatus('saving');
     try {
       console.log('Creating snapshot with goalData:', goalData);
-      const snapshot = SnapshotManager.createSnapshot(rawData, analytics, summary, name, description, goalData);
+      const snapshot = SnapshotManager.createSnapshot(rawData, analytics, summary, name, description, goalData, historicalData);
       console.log('Created snapshot:', snapshot);
       const success = SnapshotManager.saveSnapshot(snapshot);
       if (success) {
@@ -275,6 +277,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ analytics, summ
     { id: 'heatmap', name: '时间热力图', icon: ChartBar },
     { id: 'crossplatform', name: '跨平台对比', icon: Layers },
     { id: 'calendar', name: '发布日历', icon: CalendarDays },
+    ...(historicalData && historicalData.length > 0 ? [{ id: 'historical', name: '历史对比', icon: TrendingUp }] : []),
   ];
 
   const renderContent = () => {
@@ -336,6 +339,10 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ analytics, summ
         return fd ? <CrossPlatformAnalysis data={fd} /> : noData;
       case 'calendar':
         return fd ? <ContentCalendar data={fd} /> : noData;
+      case 'historical':
+        return (fd && historicalData && historicalData.length > 0)
+          ? <HistoricalComparison currentData={fd} historicalData={historicalData} />
+          : <div className="p-8 text-center text-gray-500">请先在「数据处理」页面上传历史数据</div>;
       default:
         return <OverviewCards metrics={analytics.performanceMetrics} />;
     }

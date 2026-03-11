@@ -2,6 +2,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { Database, RefreshCcw, CheckCircle, AlertCircle, BarChart3, FileText, Target, Save, ShieldCheck, PlusCircle, X } from 'lucide-react';
 import { useTheme, THEMES, Theme } from './utils/themeContext';
 import FileUpload from './components/FileUpload';
+import HistoricalDataUpload from './components/HistoricalDataUpload';
 import ProcessingProgress from './components/ProcessingProgress';
 import DataPreview from './components/DataPreview';
 import AnalyticsDashboard from './components/Analytics/AnalyticsDashboard';
@@ -35,6 +36,7 @@ function App() {
   const [activeView, setActiveView] = useState<'home' | 'data' | 'analytics' | 'goals' | 'snapshots'>('home');
   const [showSnapshotManager, setShowSnapshotManager] = useState(false);
   const [goalData, setGoalData] = useState<any>(null);
+  const [historicalData, setHistoricalData] = useState<UnifiedData[]>([]);
 
   // 数据质量统计
   const dataQualityStats = useMemo(() => {
@@ -231,6 +233,7 @@ function App() {
     setError('');
     setIsProcessing(false);
     setCurrentStep('');
+    setHistoricalData([]);
     setActiveView('data');
   };
 
@@ -412,6 +415,13 @@ function App() {
                       <div>• <span className="font-medium">小红书</span>: Excel格式 (.xlsx/.xls)</div>
                     </div>
                   </div>
+
+                  {/* 历史数据上传 */}
+                  <HistoricalDataUpload
+                    historicalData={historicalData}
+                    onHistoricalDataLoaded={setHistoricalData}
+                    isProcessing={isProcessing}
+                  />
                 </div>
               </div>
             )}
@@ -525,7 +535,7 @@ function App() {
 
               {/* 数据分析页面 */}
               {activeView === 'analytics' && analytics && (
-                <AnalyticsDashboard analytics={analytics} summary={summary} rawData={processedData} goalData={goalData} />
+                <AnalyticsDashboard analytics={analytics} summary={summary} rawData={processedData} goalData={goalData} historicalData={historicalData} />
               )}
 
               {/* 数据分析页面 - 无数据提示 */}
@@ -583,12 +593,14 @@ function App() {
                   analytics={analytics}
                   summary={summary}
                   goalData={goalData}
-                  onLoadSnapshot={(data, analytics, summary, goalData) => {
+                  historicalData={historicalData}
+                  onLoadSnapshot={(data, analytics, summary, goalData, historicalData) => {
                     console.log('App.tsx - Loading snapshot data:', { data, analytics, summary, goalData });
                     setProcessedData(data);
                     setAnalytics(analytics);
                     setSummary(summary);
                     setGoalData(goalData);
+                    if (historicalData) setHistoricalData(historicalData);
                     console.log('App.tsx - Goal data set to:', goalData);
                   }}
                 />

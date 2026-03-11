@@ -27,7 +27,8 @@ interface SnapshotManagerProps {
   analytics: AnalyticsData | null;
   summary: any;
   goalData?: any;
-  onLoadSnapshot: (data: UnifiedData[], analytics: AnalyticsData | null, summary: any, goalData?: any) => void;
+  historicalData?: UnifiedData[];
+  onLoadSnapshot: (data: UnifiedData[], analytics: AnalyticsData | null, summary: any, goalData?: any, historicalData?: UnifiedData[]) => void;
 }
 
 interface CreateSnapshotModalProps {
@@ -122,6 +123,7 @@ const SnapshotManagerComponent: React.FC<SnapshotManagerProps> = ({
   analytics,
   summary,
   goalData,
+  historicalData,
   onLoadSnapshot
 }) => {
   const [snapshots, setSnapshots] = useState<Record<string, SnapshotMetadata>>({});
@@ -158,7 +160,8 @@ const SnapshotManagerComponent: React.FC<SnapshotManagerProps> = ({
         summary,
         name,
         description,
-        goalData
+        goalData,
+        historicalData,
       );
       
       const success = SnapshotManager.saveSnapshot(snapshot);
@@ -185,7 +188,8 @@ const SnapshotManagerComponent: React.FC<SnapshotManagerProps> = ({
           snapshot.data.processedData,
           snapshot.data.analytics,
           snapshot.data.summary,
-          snapshot.data.goalData
+          snapshot.data.goalData,
+          snapshot.data.historicalData,
         );
         showMessage('success', '快照加载成功！');
       } else {

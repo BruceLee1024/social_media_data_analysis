@@ -9,15 +9,40 @@ export class FileProcessor {
     '收藏', '分享', '涨粉', '体裁', '粉丝增量', '完播率',
   ]);
 
-  static async readExcelFile(file: File): Promise<any[]> {
+  /**
+   * 获取 Excel 文件中所有 sheet 名称
+   */
+  static async getSheetNames(file: File): Promise<string[]> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
           const data = new Uint8Array(e.target?.result as ArrayBuffer);
           const workbook = XLSX.read(data, { type: 'array' });
-          const firstSheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[firstSheetName];
+          resolve(workbook.SheetNames);
+        } catch (error) {
+          reject(error);
+        }
+      };
+      reader.onerror = () => reject(new Error('文件读取失败'));
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  static async readExcelFile(file: File, sheetName?: string): Promise<any[]> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target?.result as ArrayBuffer);
+          const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+          const targetSheetName = sheetName || workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[targetSheetName];
+
+          if (!worksheet) {
+            reject(new Error(`未找到工作表: ${targetSheetName}`));
+            return;
+          }
 
           const sheetRange = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
           let needSkip = false;
@@ -73,13 +98,13 @@ export class FileProcessor {
     });
   }
 
-  static async processFile(file: File): Promise<any[]> {
+  static async processFile(file: File, sheetName?: string): Promise<any[]> {
     const extension = file.name.toLowerCase().split('.').pop();
     
     switch (extension) {
       case 'xlsx':
       case 'xls':
-        return await this.readExcelFile(file);
+        return await this.readExcelFile(file, sheetName);
       case 'csv':
         return await this.readCSVFile(file);
       default:

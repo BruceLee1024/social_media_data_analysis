@@ -10,6 +10,7 @@ export interface SnapshotData {
     analytics: AnalyticsData | null;
     summary: any;
     goalData?: any;
+    historicalData?: UnifiedData[];
   };
   metadata: {
     totalRecords: number;
@@ -49,7 +50,8 @@ export class SnapshotManager {
     summary: any,
     name: string,
     description?: string,
-    goalData?: any
+    goalData?: any,
+    historicalData?: UnifiedData[],
   ): SnapshotData {
     const id = this.generateId();
     const timestamp = new Date().toISOString();
@@ -75,13 +77,14 @@ export class SnapshotManager {
         processedData,
         analytics,
         summary,
-        goalData
+        goalData,
+        historicalData,
       },
       metadata: {
         totalRecords: processedData.length,
         platforms,
         dateRange,
-        fileSize: this.calculateDataSize(processedData, analytics, summary, goalData)
+        fileSize: this.calculateDataSize(processedData, analytics, summary, goalData, historicalData)
       }
     };
 
@@ -277,10 +280,11 @@ export class SnapshotManager {
     processedData: UnifiedData[],
     analytics: AnalyticsData | null,
     summary: any,
-    goalData?: any
+    goalData?: any,
+    historicalData?: UnifiedData[],
   ): number {
     try {
-      const dataStr = JSON.stringify({ processedData, analytics, summary, goalData });
+      const dataStr = JSON.stringify({ processedData, analytics, summary, goalData, historicalData });
       return new Blob([dataStr]).size;
     } catch (error) {
       console.error('计算数据大小失败:', error);

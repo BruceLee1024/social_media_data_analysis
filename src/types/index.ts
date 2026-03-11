@@ -158,3 +158,43 @@ export interface TotalStats {
     end: string;
   };
 }
+
+// 历史数据对比相关接口
+export interface HistoricalDataset {
+  label: string;
+  year: number;
+  data: UnifiedData[];
+  platforms: string[];
+  dateRange: { start: string; end: string };
+}
+
+export interface AggregatedMetrics {
+  count: number;
+  totalViews: number;
+  totalLikes: number;
+  totalComments: number;
+  totalShares: number;
+  totalBookmarks: number;
+  totalFollowers: number;
+  avgCompletionRate: number;
+  avgPlayDuration: number;
+}
+
+export interface PeriodComparisonPoint {
+  period: string;
+  periodLabel: string;
+  current: AggregatedMetrics;
+  historical: AggregatedMetrics;
+  changeRates: Record<string, number>;
+}
+
+export interface ComparisonSummary {
+  currentTotal: AggregatedMetrics;
+  historicalTotal: AggregatedMetrics;
+  overallChangeRates: Record<string, number>;
+  byPlatform: Record<string, {
+    current: AggregatedMetrics;
+    historical: AggregatedMetrics;
+    changeRates: Record<string, number>;
+  }>;
+}
